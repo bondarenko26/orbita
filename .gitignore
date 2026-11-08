@@ -1,0 +1,15 @@
+
+# Local deployment and test data
+data/
+node_modules/
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.sqlite*
+*.db
+*.mail-key
+secrets/
+work/
+Тестовые-аккаунты.md
