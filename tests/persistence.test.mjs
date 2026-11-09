@@ -12,7 +12,7 @@ test('empty installation and data survive a real server restart',async()=>{
  let instance=await start();const request=async(p,b,cookie)=>{const r=await fetch(instance.url+'/api/'+p,{method:b?'POST':'GET',headers:{...(b?{'Content-Type':'application/json'}:{}),...(cookie?{cookie}:{})},body:b?JSON.stringify(b):undefined});return {status:r.status,body:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
  const auth=await request('login',{login:'admin',password:instance.password});assert.equal(auth.status,200);
  const state=await request('manage',null,auth.cookie);assert.equal(state.body.entities.users.rows.length,1);assert.equal(state.body.entities.lessons.rows.length,0);
- await request('manage/groups',{name:'ТЕСТ-101',faculty:'Тестовый',program:'Программа',course:1},auth.cookie);
+ const created=await request('manage/groups',{name:'ТЕСТ-101',program_id:state.body.catalog.find(n=>n.kind==='program').id,course:1,admission_year:2026},auth.cookie);assert.equal(created.status,200,JSON.stringify(created.body));
  await stop();instance=await start();assert.equal(instance.password,undefined);
  const restored=await request('manage',null,auth.cookie);assert.equal(restored.status,200);assert.equal(restored.body.groups[0].name,'ТЕСТ-101');assert.equal(restored.body.audit.length,1);
  }finally{if(child&&child.exitCode===null)await stop();rmSync(dir,{recursive:true,force:true})}

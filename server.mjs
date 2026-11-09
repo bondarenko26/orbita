@@ -25,26 +25,11 @@ const verify=(p,h)=>{const [s,k]=h.split(':');return timingSafeEqual(scryptSync(
 const all=(sql,...v)=>db.prepare(sql).all(...v); const one=(sql,...v)=>db.prepare(sql).get(...v);const run=(sql,...v)=>db.prepare(sql).run(...v);
 function seed(){
  if(one('SELECT id FROM users LIMIT 1'))return;
- if(process.env.DEMO_SEED==='0'){
  const password=randomBytes(15).toString('base64url');run('INSERT INTO users(login,password,name,role,faculty,program,course,grp) VALUES(?,?,?,?,?,?,?,?)','admin',hash(password),'Администратор','admin','','',1,'');
- console.log('Первый запуск пустой базы. admin / '+password);return;
- }
- const accounts=[['student1','Алиса Примерова','student','ИС-201'],['student2','Марк Вымышленный','student','ДЗ-202'],['staff','Вера Демонстрационная','staff',''],['coach','Илья Учебный','manager',''],['admin','Администратор прототипа','admin','']];
- const credentials=[];
- for(const [login,name,role,grp] of accounts){const password=randomBytes(9).toString('base64url');run('INSERT INTO users(login,password,name,role,faculty,program,course,grp) VALUES(?,?,?,?,?,?,?,?)',login,hash(password),name,role,'Институт цифровых технологий',grp==='ДЗ-202'?'Дизайн':'Информационные системы',2,grp);credentials.push({login,password,role});}
- for(const grp of ['ИС-201','ДЗ-202'])for(let day=1;day<=6;day++)for(const [i,start,end] of [[0,'09:00','10:20'],[1,'11:30','12:50'],[2,'14:30','15:50']])run('INSERT INTO lessons(grp,day,start,end,subject,kind,room,teacher) VALUES(?,?,?,?,?,?,?,?)',grp,day,start,end,(grp==='ДЗ-202'?['История дизайна','Композиция','Типографика']:['Программирование','Физическая культура и спорт','История России'])[(i+day-1)%3],['Лекция','Практика','Лабораторная'][i],['203 · Корпус А','Спортивный зал','304 · Корпус Б'][i],['А. А. Учебный','М. С. Примерная','И. В. Демонстрационный'][i]);
- for(let u=1;u<=2;u++)for(const [i,s] of ['Математика','Иностранный язык','Программирование','История России'].entries())run('INSERT INTO grades(user_id,subject,score,assessment,date) VALUES(?,?,?,?,?)',u,s,String(3+(i+u)%3),i%2?'Зачёт':'Экзамен','2026-12-'+(14+i));
- run('INSERT INTO clubs(title,category,description,place,weekday,start,end,owner,capacity) VALUES(?,?,?,?,?,?,?,?,?)','Волейбол','Спорт','Командная игра, тренировки и подготовка к студенческой лиге. Подходит начинающим.','Спортивный корпус · зал 2',2,'18:00','19:30',4,16);
- run('INSERT INTO clubs(title,category,description,place,weekday,start,end,owner,capacity) VALUES(?,?,?,?,?,?,?,?,?)','Мастерская дизайна','Творчество','Создаём плакаты, обсуждаем визуальные идеи и собираем портфолио.','Корпус Б · 110',4,'17:00','18:30',4,20);
- run('INSERT INTO clubs(title,category,description,place,weekday,start,end,owner,capacity) VALUES(?,?,?,?,?,?,?,?,?)','Робототехника','Наука','От первого датчика до собственного робота. Практические занятия в команде.','Лаборатория 305',3,'17:30','19:00',4,12);
- run('INSERT INTO events(title,type,date,place,description,owner) VALUES(?,?,?,?,?,?)','Сборная по волейболу','Сборная','2026-11-17T18:00','Спортивный корпус','Открытый просмотр: возьмите спортивную форму. Отбор после пробной тренировки.',4);
- run('INSERT INTO events(title,type,date,place,description,owner) VALUES(?,?,?,?,?,?)','Кубок кампуса','Соревнование','2026-11-24T16:00','Главный спортивный зал','Межфакультетский турнир. Регистрация команд через руководителя секции.',4);
- run('INSERT INTO notices(title,body) VALUES(?,?)','Добро пожаловать в Орбиту','Это конкурсный прототип. Все люди, оценки и события вымышлены.');
- run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',1,'Приём заявок на справки','Закажите справку онлайн в разделе «Заявки».');
- console.log('Первый запуск: сохраните тестовые учётные данные. Они больше не будут показаны.\n'+JSON.stringify(credentials,null,2));
+ console.log('Первый запуск пустой базы. admin / '+password);
 }
 seed();
-const safeUser=u=>{const {password,...v}=u;return v};
+const safeUser=u=>management.academic.me(u);
 const tokenHash=t=>createHash('sha256').update(t).digest('hex');
 const limits=new Map();
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status})};
@@ -59,7 +44,7 @@ async function handler(req,res){
  const url=new URL(req.url,'http://localhost');const p=url.pathname;
  const send=(data,status=200)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))};
  try{
- if(!p.startsWith('/api/')){const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/management-ui.js':'management-ui.js'};if(!files[p])fail(404,'Не найдено');res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript; charset=utf-8':p.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(path.join(root,'public',files[p])));return;}
+ if(!p.startsWith('/api/')){const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/management-ui.js':'management-ui.js','/teaching-ui.js':'teaching-ui.js'};if(!files[p])fail(404,'Не найдено');res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript; charset=utf-8':p.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(path.join(root,'public',files[p])));return;}
  let b={};if(!['GET','HEAD'].includes(req.method)){const origin=req.headers.origin;if(origin&&origin!==(process.env.PUBLIC_ORIGIN||`http://${req.headers.host}`))fail(403,'Источник запроса не разрешён');if(!req.headers['content-type']?.startsWith('application/json'))fail(415,'Ожидается JSON');let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>16000)fail(413,'Слишком большой запрос')}try{b=JSON.parse(raw||'{}')}catch{fail(400,'Некорректный JSON')}}
  const cookie=req.headers.cookie?.match(/(?:^|; )orbita=([a-f0-9]{64})(?:;|$)/)?.[1];
  const u=cookie?one('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE u.active=1 AND s.token=? AND s.expires>?',tokenHash(cookie),Date.now()):null;
@@ -71,18 +56,18 @@ async function handler(req,res){
  if(p==='/api/logout'&&req.method==='POST'){run('DELETE FROM sessions WHERE token=?',tokenHash(cookie));res.setHeader('Set-Cookie','orbita=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');send({ok:true});return}
  if(p==='/api/me'&&req.method==='GET'){send(safeUser(u));return}
  if(p==='/api/theme'&&req.method==='POST'){run('UPDATE users SET theme=? WHERE id=?',allowed(b.theme,['dark','light','violet']),u.id);send({ok:true});return}
- if(p==='/api/schedule'&&req.method==='GET'){send(management.calendar(date(url.searchParams.get('date')||''),u));return;}
- if(p==='/api/notes'&&req.method==='POST'){const l=one('SELECT * FROM lessons WHERE id=? AND grp=?',Number(b.lesson_id),u.grp);if(!l)fail(404,'Занятие не найдено');date(b.date);if(typeof b.text!=='string'||b.text.length>2000)fail(400,'Максимум 2000 символов');run('INSERT INTO notes VALUES(?,?,?,?) ON CONFLICT(user_id,lesson_id,date) DO UPDATE SET text=excluded.text',u.id,l.id,b.date,b.text);send({ok:true});return}
+ if(p==='/api/schedule'&&req.method==='GET'){send(u.role==='teacher'?management.academic.calendar(date(url.searchParams.get('date')||''),u,management.calendar):management.calendar(date(url.searchParams.get('date')||''),u));return;}
+ if(p==='/api/notes'&&req.method==='POST'){roles(u,'student');date(b.date);const l=management.calendar(b.date,u).lessons.find(l=>l.id===Number(b.lesson_id));if(!l)fail(404,'Занятие не найдено');if(typeof b.text!=='string'||b.text.length>2000)fail(400,'Максимум 2000 символов');run('INSERT INTO notes VALUES(?,?,?,?) ON CONFLICT(user_id,lesson_id,date) DO UPDATE SET text=excluded.text',u.id,l.id,b.date,b.text);send({ok:true});return}
  if(p==='/api/grades'&&req.method==='GET'){send(all('SELECT * FROM grades WHERE user_id=?',u.id));return}
  if(p==='/api/requests'&&req.method==='GET'){send(all("SELECT r.*,CASE WHEN d.id IS NOT NULL AND r.status='Готова' THEN 1 ELSE 0 END AS has_document FROM requests r LEFT JOIN documents d ON d.request_id=r.id WHERE r.user_id=? ORDER BY r.id DESC",u.id));return}
  if(p==='/api/inbox'&&req.method==='GET'){
  roles(u,'staff','admin','manager');send({
- requests:['staff','admin'].includes(u.role)?all('SELECT r.*,u.name,d.content AS document FROM requests r JOIN users u ON u.id=r.user_id LEFT JOIN documents d ON d.request_id=r.id ORDER BY r.id DESC'):[],
+ requests:['staff','admin'].includes(u.role)?management.academic.filter('requests',all('SELECT r.*,u.name,d.content AS document FROM requests r JOIN users u ON u.id=r.user_id LEFT JOIN documents d ON d.request_id=r.id ORDER BY r.id DESC'),u):[],
  memberships:['manager','admin'].includes(u.role)?all("SELECT m.*,u.name,c.title FROM memberships m JOIN clubs c ON c.id=m.club_id JOIN users u ON u.id=m.user_id WHERE c.owner=? OR ?='admin' ORDER BY m.id DESC",u.id,u.role):[]
  });return}
  if(p==='/api/requests'&&req.method==='POST'){
  roles(u,'student');const type=allowed(b.type,['Справка об обучении','Справка о стипендии','Заявление в деканат']);const comment=typeof b.comment==='string'?b.comment.slice(0,2000):'';
- db.exec('BEGIN IMMEDIATE');let id;try{const r=run('INSERT INTO requests(user_id,type,comment) VALUES(?,?,?)',u.id,type,comment);id=Number(r.lastInsertRowid);for(const staff of all("SELECT id FROM users WHERE active=1 AND role IN ('staff','admin')"))run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',staff.id,'Новая заявка №'+id,`${u.name}: ${type}. Откройте раздел «Входящие».`);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
+ db.exec('BEGIN IMMEDIATE');let id;try{const r=run('INSERT INTO requests(user_id,type,comment) VALUES(?,?,?)',u.id,type,comment);id=Number(r.lastInsertRowid);for(const staff of all("SELECT * FROM users WHERE active=1 AND role IN ('staff','admin')").filter(s=>management.academic.canStudent(s,u.id)))run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',staff.id,'Новая заявка №'+id,`${u.name}: ${type}. Откройте раздел «Входящие».`);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
  send({id},201);return}
  if(/^\/api\/requests\/\d+$/.test(p)&&req.method==='GET'){const r=one('SELECT * FROM requests WHERE id=? AND user_id=?',Number(p.split('/').pop()),u.id);if(!r)fail(404,'Заявка не найдена');send(r);return}
  if(p==='/api/clubs'&&req.method==='GET'){send(all('SELECT c.*,m.status AS membership FROM clubs c LEFT JOIN memberships m ON m.club_id=c.id AND m.user_id=? WHERE c.archived=0',u.id));return}
@@ -92,12 +77,13 @@ async function handler(req,res){
  if(result.changes)for(const recipient of all("SELECT id FROM users WHERE active=1 AND (id=? OR role='admin')",club.owner))run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',recipient.id,'Новая запись в секцию «'+club.title+'»',`${u.name} подал(а) заявку. Откройте «Входящие» → «Запись в секции».`);
  db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}send({ok:true});return}
  if(p==='/api/events'&&req.method==='GET'){send(all('SELECT * FROM events WHERE archived=0 ORDER BY date'));return}
- if(p==='/api/notices'&&req.method==='GET'){send(all('SELECT n.*,r.notice_id AS is_read FROM notices n LEFT JOIN reads r ON r.notice_id=n.id AND r.user_id=? WHERE n.user_id IS NULL OR n.user_id=? ORDER BY n.id DESC',u.id,u.id));return}
- if(p==='/api/notices/read'&&req.method==='POST'){run('INSERT OR IGNORE INTO reads SELECT ?,id FROM notices WHERE user_id IS NULL OR user_id=?',u.id,u.id);send({ok:true});return}
+ if(p==='/api/notices'&&req.method==='GET'){const rows=all('SELECT n.*,r.notice_id AS is_read FROM notices n LEFT JOIN reads r ON r.notice_id=n.id AND r.user_id=? WHERE n.user_id IS NULL OR n.user_id=? ORDER BY n.id DESC',u.id,u.id);send(rows.filter(n=>n.user_id||!n.institute_id||n.institute_id===management.academic.effectiveInstitute(u)||management.academic.allowedInstitute(u,n.institute_id)));return}
+ if(p==='/api/notices/read'&&req.method==='POST'){const ids=all('SELECT * FROM notices WHERE user_id IS NULL OR user_id=?',u.id).filter(n=>n.user_id||!n.institute_id||n.institute_id===management.academic.effectiveInstitute(u)||management.academic.allowedInstitute(u,n.institute_id));for(const n of ids)run('INSERT OR IGNORE INTO reads VALUES(?,?)',u.id,n.id);send({ok:true});return}
  if(/^\/api\/requests\/\d+\/document$/.test(p)&&req.method==='GET'){
  const id=Number(p.split('/')[3]);const d=one("SELECT d.*,r.type,u.name FROM documents d JOIN requests r ON r.id=d.request_id JOIN users u ON u.id=r.user_id WHERE r.id=? AND r.user_id=? AND r.status='Готова'",id,u.id);if(!d)fail(404,'Документ не найден');res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8','Content-Disposition':'attachment; filename="orbita-document-'+id+'.txt"','Cache-Control':'no-store'});res.end('КОНКУРСНЫЙ ОБРАЗЕЦ · НЕ ОФИЦИАЛЬНЫЙ ДОКУМЕНТ\n\n'+d.type+' №'+id+'\n'+d.name+'\n\n'+d.content+'\n\nДата выдачи: '+d.created);return;
  }
  if(p==='/api/leave'&&req.method==='POST'){run('DELETE FROM memberships WHERE user_id=? AND club_id=?',u.id,Number(b.club_id));send({ok:true});return;}
+ if(await management.academic.handle(p,req.method,b,u,send,url,management.calendar))return;
  if(await management.handle(p,req.method,b,u,send))return;
  fail(404,'Не найдено');
  }catch(e){const constraint=/UNIQUE constraint|FOREIGN KEY constraint|NOT NULL constraint/.test(e.message);send({error:e.status?e.message:constraint?'Запись уже существует или связана с другими данными':'Ошибка сервера'},e.status||(constraint?409:500));if(!e.status&&!constraint)console.error(e)}

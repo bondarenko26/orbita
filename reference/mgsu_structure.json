@@ -1,0 +1,1273 @@
+{
+  "schema_version": "1.0",
+  "university": {
+    "id": "mgsu",
+    "name": "НИУ МГСУ"
+  },
+  "prepared_date": "2026-11-09",
+  "data_status": "reference_structure_requires_group_import",
+  "hierarchy": [
+    "institute",
+    "education_form",
+    "level",
+    "direction",
+    "program",
+    "course",
+    "group",
+    "subgroup"
+  ],
+  "notes": [
+    "Справочная структура на основе предыдущей сверки открытых страниц МГСУ; не официальный реестр действующего контингента.",
+    "Пустые courses означают отсутствие проверенных данных о курсах и группах, а не отсутствие студентов.",
+    "Все подразделения основного дерева привязаны к очной форме согласно разделу расписания; очно-заочное и заочное обучение ведутся отдельным блоком ИДО.",
+    "Не создавать фиктивные курсы, группы и подгруппы из этого справочника. Их нужно импортировать из расписания нужного семестра.",
+    "id — технические идентификаторы этого файла, не официальные идентификаторы МГСУ.",
+    "Одинаковые коды направлений в разных институтах имеют разные id.",
+    "Неуказанный уровень не означает отсутствие лицензии. Статусы senior_cohort_in_source и requires_verification нельзя считать подтверждением действующей группы."
+  ],
+  "institutes": [
+    {
+      "id": "ipgs",
+      "abbreviation": "ИПГС",
+      "name": "Институт промышленного и гражданского строительства",
+      "education_forms": [
+        {
+          "id": "ipgs__full_time",
+          "code": "full_time",
+          "name": "Очная",
+          "levels": [
+            {
+              "id": "ipgs__full_time__bachelor",
+              "code": "bachelor",
+              "name": "Бакалавриат",
+              "directions": [
+                {
+                  "id": "ipgs__full_time__bachelor__08_03_01",
+                  "code": "08.03.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ipgs__full_time__bachelor__08_03_01__program_1",
+                      "name": "Промышленное и гражданское строительство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ipgs__full_time__bachelor__08_03_01__program_2",
+                      "name": "Производство и применение строительных материалов, изделий и конструкций",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ipgs__full_time__bachelor__08_03_01__program_3",
+                      "name": "Управление в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ipgs__full_time__bachelor__08_03_01__program_4",
+                      "name": "Бизнес-инжиниринг в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ipgs__full_time__bachelor__38_03_02",
+                  "code": "38.03.02",
+                  "name": "Менеджмент",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ipgs__full_time__bachelor__38_03_02__program_1",
+                      "name": "Менеджмент в инвестиционно-строительной сфере",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ipgs__full_time__bachelor__38_03_04",
+                  "code": "38.03.04",
+                  "name": "Государственное и муниципальное управление",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ipgs__full_time__bachelor__38_03_04__program_1",
+                      "name": "Региональное, муниципальное и корпоративное управление",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "ipgs__full_time__specialist",
+              "code": "specialist",
+              "name": "Специалитет",
+              "directions": [
+                {
+                  "id": "ipgs__full_time__specialist__08_05_01",
+                  "code": "08.05.01",
+                  "name": "Строительство уникальных зданий и сооружений",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ipgs__full_time__specialist__08_05_01__program_1",
+                      "name": "Строительство высотных и большепролетных зданий и сооружений",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "ipgs__full_time__master",
+              "code": "master",
+              "name": "Магистратура",
+              "directions": [
+                {
+                  "id": "ipgs__full_time__master__08_04_01",
+                  "code": "08.04.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ipgs__full_time__master__08_04_01__program_1",
+                      "name": "Обследование и мониторинг зданий и сооружений",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ipgs__full_time__master__08_04_01__program_2",
+                      "name": "Управление строительной и подрядной организацией",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ipgs__full_time__master__08_04_01__program_3",
+                      "name": "Технологии и организация строительства",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ipgs__full_time__master__08_04_01__program_4",
+                      "name": "Контрольная и надзорная деятельность при строительстве зданий и сооружений",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ipgs__full_time__master__08_04_01__program_5",
+                      "name": "Производство строительных материалов, изделий и конструкций",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ipgs__full_time__master__08_04_01__program_6",
+                      "name": "Управление проектами в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ipgs__full_time__master__08_04_01__program_7",
+                      "name": "Промышленное и гражданское строительство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ipgs__full_time__master__27_04_05",
+                  "code": "27.04.05",
+                  "name": "Инноватика",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ipgs__full_time__master__27_04_05__program_1",
+                      "name": "Управление инновационным развитием предприятий инвестиционно-строительной сферы",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ipgs__full_time__master__38_04_02",
+                  "code": "38.04.02",
+                  "name": "Менеджмент",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ipgs__full_time__master__38_04_02__program_1",
+                      "name": "Финансовый менеджмент на предприятиях инвестиционно-строительной сферы",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iiesm",
+      "abbreviation": "ИИЭСМ",
+      "name": "Институт инженерно-экологического строительства и механизации",
+      "education_forms": [
+        {
+          "id": "iiesm__full_time",
+          "code": "full_time",
+          "name": "Очная",
+          "levels": [
+            {
+              "id": "iiesm__full_time__bachelor",
+              "code": "bachelor",
+              "name": "Бакалавриат",
+              "directions": [
+                {
+                  "id": "iiesm__full_time__bachelor__08_03_01",
+                  "code": "08.03.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iiesm__full_time__bachelor__08_03_01__program_1",
+                      "name": "Водоснабжение и водоотведение",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iiesm__full_time__bachelor__08_03_01__program_2",
+                      "name": "Теплогазоснабжение и вентиляция",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iiesm__full_time__bachelor__08_03_01__program_3",
+                      "name": "Городское строительство и хозяйство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iiesm__full_time__bachelor__08_03_01__program_4",
+                      "name": "Техническая эксплуатация объектов жилищно-коммунального хозяйства",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iiesm__full_time__bachelor__08_03_01__program_5",
+                      "name": "Техническая эксплуатация объектов жилищно-коммунального комплекса",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "Последнее название относится к старшим наборам. Это отдельная запись до проверки эквивалентности программ."
+                },
+                {
+                  "id": "iiesm__full_time__bachelor__15_03_04",
+                  "code": "15.03.04",
+                  "name": "Автоматизация технологических процессов и производств",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iiesm__full_time__bachelor__15_03_04__program_1",
+                      "name": "Цифровизация и автоматизация технологических процессов",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iiesm__full_time__bachelor__15_03_04__program_2",
+                      "name": "Автоматизация инженерных строительных технологий",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "Второе название приведено для старшего курса; написание сохранено по основному источнику."
+                },
+                {
+                  "id": "iiesm__full_time__bachelor__27_03_04",
+                  "code": "27.03.04",
+                  "name": "Управление в технических системах",
+                  "status": "senior_cohort_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iiesm__full_time__bachelor__27_03_04__program_1",
+                      "name": "Интеллектуальные системы и автоматика в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "Приведено для старшего курса; наличие действующих групп требует проверки."
+                }
+              ]
+            },
+            {
+              "id": "iiesm__full_time__specialist",
+              "code": "specialist",
+              "name": "Специалитет",
+              "directions": [
+                {
+                  "id": "iiesm__full_time__specialist__23_05_01",
+                  "code": "23.05.01",
+                  "name": "Наземные транспортно-технологические средства",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iiesm__full_time__specialist__23_05_01__program_1",
+                      "name": "Подъёмно-транспортные, строительные, дорожные средства и оборудование",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "iiesm__full_time__master",
+              "code": "master",
+              "name": "Магистратура",
+              "directions": [
+                {
+                  "id": "iiesm__full_time__master__08_04_01",
+                  "code": "08.04.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iiesm__full_time__master__08_04_01__program_1",
+                      "name": "Системы водоснабжения, водоотведения и охраны водных ресурсов",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iiesm__full_time__master__08_04_01__program_2",
+                      "name": "Системы теплогазоснабжения, вентиляции и кондиционирования воздуха",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iiesm__full_time__master__08_04_01__program_3",
+                      "name": "Городское строительство и жилищно-коммунальный комплекс",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ictms",
+      "abbreviation": "ИЦТМС",
+      "name": "Институт цифровых технологий и моделирования в строительстве",
+      "education_forms": [
+        {
+          "id": "ictms__full_time",
+          "code": "full_time",
+          "name": "Очная",
+          "levels": [
+            {
+              "id": "ictms__full_time__bachelor",
+              "code": "bachelor",
+              "name": "Бакалавриат",
+              "directions": [
+                {
+                  "id": "ictms__full_time__bachelor__01_03_04",
+                  "code": "01.03.04",
+                  "name": "Прикладная математика",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ictms__full_time__bachelor__01_03_04__program_1",
+                      "name": "Цифровое проектирование и моделирование",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ictms__full_time__bachelor__09_03_02",
+                  "code": "09.03.02",
+                  "name": "Информационные системы и технологии",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ictms__full_time__bachelor__09_03_02__program_1",
+                      "name": "Информационные системы и технологии в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ictms__full_time__bachelor__09_03_02__program_2",
+                      "name": "Цифровое моделирование и проектирование в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "ictms__full_time__specialist",
+              "code": "specialist",
+              "name": "Специалитет",
+              "directions": [],
+              "note": "В основном источнике программы не указаны; это не доказательство отсутствия лицензии."
+            },
+            {
+              "id": "ictms__full_time__master",
+              "code": "master",
+              "name": "Магистратура",
+              "directions": [
+                {
+                  "id": "ictms__full_time__master__08_04_01",
+                  "code": "08.04.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ictms__full_time__master__08_04_01__program_1",
+                      "name": "Математическое и компьютерное моделирование в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ictms__full_time__master__08_04_01__program_2",
+                      "name": "Искусственный интеллект в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ictms__full_time__master__08_04_01__program_3",
+                      "name": "Advanced Vodeling in Structural Engineering",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "Англоязычное название сохранено как в основном источнике, включая возможную опечатку; требуется сверка."
+                },
+                {
+                  "id": "ictms__full_time__master__09_04_01",
+                  "code": "09.04.01",
+                  "name": "Информатика и вычислительная техника",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ictms__full_time__master__09_04_01__program_1",
+                      "name": "Автоматизированные системы обработки информации, управления и проектирования в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ictms__full_time__master__09_04_01__program_2",
+                      "name": "Информационное моделирование в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ictms__full_time__master__15_04_03",
+                  "code": "15.04.03",
+                  "name": "Прикладная механика",
+                  "status": "requires_verification",
+                  "source_ids": [
+                    "general_catalog"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ictms__full_time__master__15_04_03__program_1",
+                      "name": "Вычислительная механика и компьютерный инжиниринг",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "В общем справочнике закреплено за ИЦТМС; найден план набора 2023 года. Наличие действующих групп не подтверждено."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iag",
+      "abbreviation": "ИАГ",
+      "name": "Институт архитектуры и градостроительства",
+      "education_forms": [
+        {
+          "id": "iag__full_time",
+          "code": "full_time",
+          "name": "Очная",
+          "levels": [
+            {
+              "id": "iag__full_time__bachelor",
+              "code": "bachelor",
+              "name": "Бакалавриат",
+              "directions": [
+                {
+                  "id": "iag__full_time__bachelor__07_03_01",
+                  "code": "07.03.01",
+                  "name": "Архитектура",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iag__full_time__bachelor__07_03_01__program_1",
+                      "name": "Архитектура",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "iag__full_time__bachelor__07_03_02",
+                  "code": "07.03.02",
+                  "name": "Реконструкция и реставрация архитектурного наследия",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iag__full_time__bachelor__07_03_02__program_1",
+                      "name": "Реконструкция и реставрация архитектурного наследия",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "iag__full_time__bachelor__07_03_04",
+                  "code": "07.03.04",
+                  "name": "Градостроительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iag__full_time__bachelor__07_03_04__program_1",
+                      "name": "Градостроительство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "iag__full_time__bachelor__08_03_01",
+                  "code": "08.03.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iag__full_time__bachelor__08_03_01__program_1",
+                      "name": "Дорожное строительство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "iag__full_time__specialist",
+              "code": "specialist",
+              "name": "Специалитет",
+              "directions": [],
+              "note": "В основном источнике программы не указаны."
+            },
+            {
+              "id": "iag__full_time__master",
+              "code": "master",
+              "name": "Магистратура",
+              "directions": [
+                {
+                  "id": "iag__full_time__master__07_04_01",
+                  "code": "07.04.01",
+                  "name": "Архитектура",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iag__full_time__master__07_04_01__program_1",
+                      "name": "Архитектура зданий, сооружений и комплексов",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "iag__full_time__master__07_04_02",
+                  "code": "07.04.02",
+                  "name": "Реконструкция и реставрация архитектурного наследия",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iag__full_time__master__07_04_02__program_1",
+                      "name": "Реконструкция и реставрация зданий и сооружений",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "iag__full_time__master__07_04_03",
+                  "code": "07.04.03",
+                  "name": "Дизайн архитектурной среды",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iag__full_time__master__07_04_03__program_1",
+                      "name": "Дизайн городской среды и интерьера",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "iag__full_time__master__07_04_04",
+                  "code": "07.04.04",
+                  "name": "Градостроительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iag__full_time__master__07_04_04__program_1",
+                      "name": "Территориальное планирование и урбанистика",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "iag__full_time__master__08_04_01",
+                  "code": "08.04.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iag__full_time__master__08_04_01__program_1",
+                      "name": "Развитие и эксплуатация дорожной сети",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iges",
+      "abbreviation": "ИГЭС",
+      "name": "Институт гидротехнического и энергетического строительства",
+      "education_forms": [
+        {
+          "id": "iges__full_time",
+          "code": "full_time",
+          "name": "Очная",
+          "levels": [
+            {
+              "id": "iges__full_time__bachelor",
+              "code": "bachelor",
+              "name": "Бакалавриат",
+              "directions": [
+                {
+                  "id": "iges__full_time__bachelor__08_03_01",
+                  "code": "08.03.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iges__full_time__bachelor__08_03_01__program_1",
+                      "name": "Инжиниринг и строительство объектов энергетики",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iges__full_time__bachelor__08_03_01__program_2",
+                      "name": "Геотехническое и подземное строительство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iges__full_time__bachelor__08_03_01__program_3",
+                      "name": "Гидротехническое и природоохранное строительство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iges__full_time__bachelor__08_03_01__program_4",
+                      "name": "Гидротехническое строительство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "Последний профиль указан для старшего курса."
+                },
+                {
+                  "id": "iges__full_time__bachelor__20_03_01",
+                  "code": "20.03.01",
+                  "name": "Техносферная безопасность",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iges__full_time__bachelor__20_03_01__program_1",
+                      "name": "Пожарная и промышленная безопасность",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iges__full_time__bachelor__20_03_01__program_2",
+                      "name": "Пожарная безопасность",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "Второе название указано для старшего курса."
+                },
+                {
+                  "id": "iges__full_time__bachelor__27_03_01",
+                  "code": "27.03.01",
+                  "name": "Стандартизация и метрология",
+                  "status": "senior_cohort_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iges__full_time__bachelor__27_03_01__program_1",
+                      "name": "Стандартизация, сертификация и метрология",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "Указано для старшего курса; действующие группы требуют проверки."
+                }
+              ]
+            },
+            {
+              "id": "iges__full_time__specialist",
+              "code": "specialist",
+              "name": "Специалитет",
+              "directions": [
+                {
+                  "id": "iges__full_time__specialist__08_05_01",
+                  "code": "08.05.01",
+                  "name": "Строительство уникальных зданий и сооружений",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iges__full_time__specialist__08_05_01__program_1",
+                      "name": "Строительство подземных сооружений",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iges__full_time__specialist__08_05_01__program_2",
+                      "name": "Строительство сооружений тепловой и атомной энергетики",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iges__full_time__specialist__08_05_01__program_3",
+                      "name": "Строительство гидротехнических сооружений повышенной ответственности",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "iges__full_time__master",
+              "code": "master",
+              "name": "Магистратура",
+              "directions": [
+                {
+                  "id": "iges__full_time__master__08_04_01",
+                  "code": "08.04.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iges__full_time__master__08_04_01__program_1",
+                      "name": "Геотехника",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iges__full_time__master__08_04_01__program_2",
+                      "name": "Строительство объектов тепловой и атомной энергетики",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iges__full_time__master__08_04_01__program_3",
+                      "name": "Гидротехническое строительство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "iges__full_time__master__08_04_01__program_4",
+                      "name": "Инженерные изыскания в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "iges__full_time__master__20_04_01",
+                  "code": "20.04.01",
+                  "name": "Техносферная безопасность",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iges__full_time__master__20_04_01__program_1",
+                      "name": "Пожарная и промышленная безопасность объектов строительства",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "iges__full_time__master__27_04_02",
+                  "code": "27.04.02",
+                  "name": "Управление качеством",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "iges__full_time__master__27_04_02__program_1",
+                      "name": "Система управления качеством в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ieuksn",
+      "abbreviation": "ИЭУКСН",
+      "name": "Институт экономики, управления и коммуникаций в сфере строительства и недвижимости",
+      "education_forms": [
+        {
+          "id": "ieuksn__full_time",
+          "code": "full_time",
+          "name": "Очная",
+          "levels": [
+            {
+              "id": "ieuksn__full_time__bachelor",
+              "code": "bachelor",
+              "name": "Бакалавриат",
+              "directions": [
+                {
+                  "id": "ieuksn__full_time__bachelor__08_03_01",
+                  "code": "08.03.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ieuksn__full_time__bachelor__08_03_01__program_1",
+                      "name": "Стоимостной инжиниринг в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ieuksn__full_time__bachelor__08_03_01__program_2",
+                      "name": "Экспертиза и управление недвижимостью",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ieuksn__full_time__bachelor__08_03_01__program_3",
+                      "name": "Управление в строительстве",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "Управление в строительстве: страница приёма указывает ИПГС и ИЭУКСН совместно; фактическое закрепление групп уточняется."
+                },
+                {
+                  "id": "ieuksn__full_time__bachelor__21_03_02",
+                  "code": "21.03.02",
+                  "name": "Землеустройство и кадастры",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "cadastre"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ieuksn__full_time__bachelor__21_03_02__program_1",
+                      "name": "Землеустройство и кадастры в градостроительной деятельности",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ieuksn__full_time__bachelor__38_03_01",
+                  "code": "38.03.01",
+                  "name": "Экономика",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ieuksn__full_time__bachelor__38_03_01__program_1",
+                      "name": "Экономика предприятий и организаций инвестиционно-строительной сферы",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ieuksn__full_time__bachelor__38_03_10",
+                  "code": "38.03.10",
+                  "name": "Жилищное хозяйство и коммунальная инфраструктура",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ieuksn__full_time__bachelor__38_03_10__program_1",
+                      "name": "Жилищное хозяйство и коммунальная инфраструктура",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "ieuksn__full_time__specialist",
+              "code": "specialist",
+              "name": "Специалитет",
+              "directions": [],
+              "note": "В основном источнике программы не указаны."
+            },
+            {
+              "id": "ieuksn__full_time__master",
+              "code": "master",
+              "name": "Магистратура",
+              "directions": [
+                {
+                  "id": "ieuksn__full_time__master__08_04_01",
+                  "code": "08.04.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ieuksn__full_time__master__08_04_01__program_1",
+                      "name": "Сервейинг: системный анализ управления земельно-имущественным комплексом",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ieuksn__full_time__master__08_04_01__program_2",
+                      "name": "Судебная строительно-техническая и стоимостная экспертизы объектов недвижимости",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ieuksn__full_time__master__08_04_01__program_3",
+                      "name": "Девелопмент в инвестиционно-строительной деятельности",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ieuksn__full_time__master__08_04_01__program_4",
+                      "name": "Инвестиционно-строительный инжиниринг",
+                      "status": "listed_in_source",
+                      "courses": []
+                    },
+                    {
+                      "id": "ieuksn__full_time__master__08_04_01__program_5",
+                      "name": "Регулирование строительной отрасли в Российской Федерации",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ],
+                  "note": "Названия по странице закрепления. На странице приёма встречается новое название «Девелопмент в строительстве»; не объединять без проверки набора."
+                },
+                {
+                  "id": "ieuksn__full_time__master__38_04_01",
+                  "code": "38.04.01",
+                  "name": "Экономика",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ieuksn__full_time__master__38_04_01__program_1",
+                      "name": "Экономика инвестиционно-строительной сферы",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                },
+                {
+                  "id": "ieuksn__full_time__master__38_04_10",
+                  "code": "38.04.10",
+                  "name": "Жилищное хозяйство и коммунальная инфраструктура",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "ieuksn__full_time__master__38_04_10__program_1",
+                      "name": "Управление жилищным хозяйством и коммунальной инфраструктурой",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "note": "Название в скриншоте отличается от официального источника; использовано название с сайта МГСУ."
+    },
+    {
+      "id": "mf",
+      "abbreviation": "МФ",
+      "name": "Мытищинский филиал",
+      "education_forms": [
+        {
+          "id": "mf__full_time",
+          "code": "full_time",
+          "name": "Очная",
+          "levels": [
+            {
+              "id": "mf__full_time__bachelor",
+              "code": "bachelor",
+              "name": "Бакалавриат",
+              "directions": [
+                {
+                  "id": "mf__full_time__bachelor__08_03_01",
+                  "code": "08.03.01",
+                  "name": "Строительство",
+                  "status": "listed_in_source",
+                  "source_ids": [
+                    "program_assignments"
+                  ],
+                  "programs": [
+                    {
+                      "id": "mf__full_time__bachelor__08_03_01__program_1",
+                      "name": "Промышленное и гражданское строительство",
+                      "status": "listed_in_source",
+                      "courses": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "mf__full_time__specialist",
+              "code": "specialist",
+              "name": "Специалитет",
+              "directions": [],
+              "note": "В основном источнике программы не указаны."
+            },
+            {
+              "id": "mf__full_time__master",
+              "code": "master",
+              "name": "Магистратура",
+              "directions": [],
+              "note": "В основном источнике программы не указаны."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "additional_navigation": [
+    {
+      "id": "ido",
+      "name": "Очно-заочная и заочная — ИДО",
+      "status": "requires_separate_verification",
+      "education_forms": [
+        {
+          "code": "part_time",
+          "name": "Очно-заочная",
+          "levels": []
+        },
+        {
+          "code": "extramural",
+          "name": "Заочная",
+          "levels": []
+        }
+      ],
+      "note": "Отдельная ветка расписания на скриншоте. Перечень профилей по каждой форме и наборам не установлен; не копировать автоматически из очной формы.",
+      "source_ids": [
+        "ido",
+        "schedule"
+      ]
+    },
+    {
+      "id": "postgraduate",
+      "name": "Аспирантура",
+      "status": "requires_separate_verification",
+      "education_forms": [],
+      "note": "Отдельный раздел расписания; научные специальности и группы не установлены.",
+      "source_ids": [
+        "schedule"
+      ]
+    }
+  ],
+  "templates": {
+    "course": {
+      "id": "<program_id>__cohort_<admission_year>__course_<number>",
+      "number": null,
+      "admission_year": null,
+      "academic_year": null,
+      "semester": null,
+      "groups": [
+        {
+          "id": "<course_id>__group_<unique_key>",
+          "name": null,
+          "subgroups": [
+            {
+              "id": "<group_id>__subgroup_<unique_key>",
+              "name": null
+            }
+          ]
+        }
+      ]
+    },
+    "note": "Только шаблон структуры. Значения в угловых скобках и null не являются реальными данными; не импортировать как контингент."
+  },
+  "sources": [
+    {
+      "id": "program_assignments",
+      "url": "https://mgsu.ru/postupayushchim/perevody-i-vosstanovleniya/",
+      "description": "Закрепление программ за институтами; основной источник предыдущей сверки."
+    },
+    {
+      "id": "general_catalog",
+      "url": "https://mgsu.ru/education/Vishee_obrazov/",
+      "description": "Общий справочник; содержит расхождения с закреплением программ."
+    },
+    {
+      "id": "cadastre",
+      "url": "https://mgsu.ru/postupayushchim/Bakalavriat-spetsialitet/Napravleniya-podgotovki-spetsialnosti/zemleustroystvo-i-kadastry/"
+    },
+    {
+      "id": "ido",
+      "url": "https://mgsu.ru/universityabout/Struktura/Instituti/IDO/nashinstitut/"
+    },
+    {
+      "id": "schedule",
+      "url": "https://mgsu.ru/student/Raspisanie_zanyatii_i_ekzamenov/fayly-raspisaniya-dlya-skachivaniya/"
+    }
+  ]
+}
