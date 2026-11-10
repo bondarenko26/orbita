@@ -1,15 +1,7 @@
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let preview=null,apiCall,issued=[],dialog;
-export function clearCredentials(){issued=[];if(dialog?.open)dialog.close();if(dialog)dialog.innerHTML='';preview=null}
-async function download(rows,button){
- button.disabled=true;const error=dialog.querySelector('.error');error.textContent='Готовим файл…';
- try{const response=await fetch('/api/accounts/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credentials:rows.map(r=>({id:r.id,password:r.password}))})});if(!response.ok){const data=await response.json();throw Error(data.error)}const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');a.href=url;a.download='orbita-access.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);error.textContent='Файл готов. Сохраните его в защищённом месте.'}catch(e){error.textContent=e.message}finally{button.disabled=false}
-}
-export function showCredentials(rows){
- issued=rows;preview=null;if(!dialog){dialog=document.createElement('dialog');dialog.className='credentials-dialog';document.body.append(dialog);dialog.addEventListener('close',()=>{issued=[];dialog.innerHTML=''})}
- dialog.innerHTML=`<h2>Данные для входа готовы</h2><p>Аккаунтов: ${rows.length}. Сохраните файл сейчас: после закрытия пароли больше не показываются. При потере можно выдать новый временный пароль.</p><p>Передайте каждому человеку только его данные. Временный пароль действует 7 дней и требует смены при первом входе.</p><button class="primary" data-access-download>Скачать Excel</button><p class="error" role="status"></p><div class="access-list">${rows.map((r,i)=>`<article class="card"><h3>${esc(r.name)}</h3><dl><dt>Логин</dt><dd>${esc(r.login)}</dd><dt>Временный пароль</dt><dd><code>${esc(r.password)}</code></dd></dl><button data-access-single="${i}">Скачать данные этого человека</button></article>`).join('')}</div><button data-access-close>Закрыть и скрыть пароли</button>`;dialog.showModal();
-}
-export function importView(call){apiCall=call;preview=null;return `<h2>Импорт аккаунтов из Excel</h2><p>Для студентов и преподавателей. Логины и временные пароли создаются автоматически после подтверждения.</p><ol><li>Скачайте шаблон с доступными группами и институтами.</li><li>Заполните лист «Аккаунты». Группы должны быть созданы заранее. Используйте только вымышленные данные.</li><li>Загрузите файл и проверьте все строки перед созданием.</li></ol><p><a class="download" href="/api/accounts/template" download>Скачать шаблон XLSX ↓</a></p><form id="account-upload" class="card"><label>Заполненный файл Excel<input type="file" name="file" accept=".xlsx" required></label><p class="muted">До 200 человек и 1 МБ. Логины и пароли в файл добавлять не нужно.</p><button class="primary">Проверить файл</button><p class="error" role="alert"></p></form><div id="import-preview" aria-live="polite"></div>`}
+let preview=null,apiCall;
+export function clearCredentials(){preview=null}
+export function importView(call){apiCall=call;preview=null;return `<h2>Импорт аккаунтов из Excel</h2><p>Для студентов и преподавателей. Логином станет email из таблицы. Временный пароль отправится каждому человеку на его почту.</p><ol><li>Скачайте шаблон с доступными группами и институтами.</li><li>Заполните лист «Аккаунты». Группы должны быть созданы заранее. Используйте только вымышленные данные.</li><li>Загрузите файл и проверьте все строки перед созданием.</li></ol><p><a class="download" href="/api/accounts/template" download>Скачать шаблон XLSX ↓</a></p><form id="account-upload" class="card"><label>Заполненный файл Excel<input type="file" name="file" accept=".xlsx" required></label><p class="muted">До 200 человек и 1 МБ. Столбец Email обязателен. Пароли добавлять не нужно.</p><button class="primary">Проверить файл</button><p class="error" role="alert"></p></form><div id="import-preview" aria-live="polite"></div>`}
 const base64=file=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(Error('Не удалось прочитать файл'));reader.readAsDataURL(file)});
 document.addEventListener('submit',async e=>{
  if(e.target.id!=='account-upload')return;e.preventDefault();preview=null;const form=e.target,file=form.elements.file.files[0],button=form.querySelector('button'),error=form.querySelector('.error'),area=document.querySelector('#import-preview');error.textContent='';area.innerHTML='';button.disabled=true;
@@ -20,11 +12,8 @@ document.addEventListener('submit',async e=>{
 document.addEventListener('change',e=>{if(e.target.matches('#account-upload input[type="file"]')){preview=null;const area=document.querySelector('#import-preview');if(area)area.innerHTML=''}});
 document.addEventListener('click',async e=>{
  const b=e.target.closest('button');if(!b)return;
- if(b.hasAttribute('data-access-download'))return download(issued,b);
- if(b.hasAttribute('data-access-single'))return download([issued[Number(b.dataset.accessSingle)]],b);
- if(b.hasAttribute('data-access-close'))return dialog.close();
  if(b.hasAttribute('data-import-commit')){
   if(!preview?.valid)return;b.disabled=true;const status=document.querySelector('#import-result');status.textContent='Создаём аккаунты…';
-  try{const result=await apiCall('accounts/commit',{token:preview.token});preview=null;if(status.isConnected){status.textContent=`Создано аккаунтов: ${result.count}.`;b.remove();showCredentials(result.credentials)}}catch(err){status.textContent=err.message;b.disabled=false}
+  try{const result=await apiCall('accounts/commit',{token:preview.token});preview=null;if(status.isConnected){status.textContent=`Создано аккаунтов: ${result.count}.`;b.remove();status.textContent+=' Временные пароли поставлены в очередь отправки на email.'}}catch(err){status.textContent=err.message;b.disabled=false}
  }
 });

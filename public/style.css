@@ -10,3 +10,10 @@
 .credentials-dialog::backdrop{background:rgba(0,0,0,.75)}
 .credentials-dialog h2{margin-top:0}.access-list{display:grid;gap:12px;margin:20px 0}.access-list dl{display:grid;gap:6px;margin:12px 0}.access-list dd{margin:0;overflow-wrap:anywhere}.access-list dt{color:var(--muted)}
 #import-preview{margin-top:24px}#import-preview>.primary{margin-top:24px}input[type=file]{max-width:100%;padding:12px 0}form[data-password-change]{max-width:480px}form[data-password-change] input{width:100%}
+
+button.danger{color:var(--red,#ff746f);border:1px solid currentColor;margin-top:12px}input[readonly]{opacity:.7}
+
+.editor,form[data-journal="grade"]{display:flex;flex-wrap:wrap;align-items:flex-start;gap:20px}
+.editor>.editor-grid,.editor>p,form[data-journal="grade"]>.editor-grid,form[data-journal="grade"]>p{flex:0 0 100%;min-width:0}
+.editor>button,.editor>button.primary,form[data-journal="grade"]>button{margin:0}
+@media(max-width:720px){.editor>button,form[data-journal="grade"]>button{width:100%}}

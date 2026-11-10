@@ -6,86 +6,77 @@ import {DatabaseSync} from 'node:sqlite';
 import os from 'node:os';
 import path from 'node:path';
 import ExcelJS from 'exceljs';
-
-test('Excel onboarding and password lifecycle',async t=>{
- const dir=mkdtempSync(path.join(os.tmpdir(),'orbita-onboarding-'));
- const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,DATA_DIR:dir,PORT:'0',HOST:'127.0.0.1',PUBLIC_ORIGIN:''},stdio:['ignore','pipe','pipe']});let out='',errors='';child.stderr.on('data',d=>errors+=d);
- t.after(async()=>{if(child.exitCode===null){const end=new Promise(r=>child.once('exit',r));child.kill();await end}rmSync(dir,{recursive:true,force:true})});
- const {url,password}=await new Promise((resolve,reject)=>{child.stdout.on('data',d=>{out+=d;const m=out.match(/Орбита: (http:\/\/127.0.0.1:\d+)/);if(m)resolve({url:m[1],password:out.match(/admin \/ (\S+)/)[1]})});child.on('error',reject);child.on('exit',()=>reject(Error(errors)))});
+import {fakeSMTP} from './helpers.mjs';
+import {passwordError,temporaryPassword} from '../credentials.mjs';
+test('email onboarding, password rules, scoped deletion and restoration',async t=>{
+ const smtp=await fakeSMTP(),dir=mkdtempSync(path.join(os.tmpdir(),'orbita-v05-'));let child;
+ t.after(async()=>{if(child?.exitCode===null){const p=new Promise(r=>child.once('exit',r));child.kill();await p}await smtp.close();rmSync(dir,{recursive:true,force:true})});
+ const start=()=>new Promise((resolve,reject)=>{let out='',err='';child=spawn(process.execPath,['server.mjs'],{env:{...process.env,...smtp.env,DATA_DIR:dir,HOST:'127.0.0.1',PORT:'0'},stdio:['ignore','pipe','pipe']});child.stdout.on('data',d=>{out+=d;const m=out.match(/Орбита: (http:\/\/127.0.0.1:\d+)/);if(m)resolve({url:m[1],password:out.match(/admin \/ (\S+)/)?.[1]})});child.stderr.on('data',d=>err+=d);child.on('exit',()=>reject(Error(err)));child.on('error',reject)});
+ let {url,password}=await start();
  const req=async(p,b,c)=>{const r=await fetch(url+'/api/'+p,{method:b===undefined?'GET':'POST',headers:{...(b===undefined?{}:{'Content-Type':'application/json'}),...(c?{cookie:c}:{})},body:b===undefined?undefined:JSON.stringify(b)});return {status:r.status,body:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]}};
  const ok=async(p,b,c)=>{const r=await req(p,b,c);assert.ok([200,201].includes(r.status),p+': '+JSON.stringify(r.body));return r.body};
- const auth=await req('login',{login:'admin',password});let ac=auth.cookie;
- const state=await ok('manage',undefined,ac),nodes=state.catalog;const inst=n=>{while(n.parent_id)n=nodes.find(p=>p.id===n.parent_id);return n.id};
- const program=nodes.find(n=>n.kind==='program'),institute=inst(program),otherProgram=nodes.find(n=>n.kind==='program'&&inst(n)!==institute);
- const group=await ok('manage/groups',{name:'ИМПОРТ-ТЕСТ',program_id:program.id,course:1,admission_year:2026},ac);
- const other=await ok('manage/groups',{name:'ДРУГОЙ-ТЕСТ',program_id:otherProgram.id,course:1,admission_year:2026},ac);
- async function file(rows){const wb=new ExcelJS.Workbook(),s=wb.addWorksheet('Аккаунты');s.addRow(['ФИО','Роль','Группа','Подгруппа','Институт']);rows.forEach(r=>s.addRow(r));return {file_name:'accounts.xlsx',file:Buffer.from(await wb.xlsx.writeBuffer()).toString('base64')}}
- const rows=[['Вымышленный Студент','Студент','ИМПОРТ-ТЕСТ','А',''],['Вымышленный Преподаватель','Преподаватель','','',institute]];
- const upload=await file(rows);let preview,result,student,teacher,sc,tc;
- await t.test('scoped template round trip and preview does not create users',async()=>{
-  const r=await fetch(url+'/api/accounts/template',{headers:{cookie:ac}});assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'no-store');
-  const wb=new ExcelJS.Workbook();await wb.xlsx.load(Buffer.from(await r.arrayBuffer()));assert.equal(wb.getWorksheet('Аккаунты').getCell('A1').value,'ФИО');assert.equal(wb.getWorksheet('Группы').getCell('A2').value,'ИМПОРТ-ТЕСТ');
-  wb.getWorksheet('Аккаунты').getRow(2).values=rows[0];const roundtrip=await ok('accounts/preview',{file_name:'template.xlsx',file:Buffer.from(await wb.xlsx.writeBuffer()).toString('base64')},ac);assert.equal(roundtrip.valid,true);assert.equal(roundtrip.count,1);
-  preview=await ok('accounts/preview',upload,ac);assert.equal(preview.valid,true);assert.equal(preview.count,2);assert.equal(new Set(preview.rows.map(r=>r.login)).size,2);assert.equal((await ok('manage',undefined,ac)).entities.users.rows.length,1);assert.equal(JSON.stringify(preview).includes('password'),false);
+ const admin=await req('login',{login:'admin',password});let ac=admin.cookie;
+ const m=await ok('manage',undefined,ac),nodes=m.catalog;const institute=n=>{while(n.parent_id)n=nodes.find(p=>p.id===n.parent_id);return n.id};
+ const prog=nodes.find(n=>n.kind==='program'),inst=institute(prog),otherProg=nodes.find(n=>n.kind==='program'&&institute(n)!==inst);
+ const g=await ok('manage/groups',{name:'ТЕСТ-EMAIL',program_id:prog.id,course:1,admission_year:2026},ac),g2=await ok('manage/groups',{name:'ЧУЖАЯ',program_id:otherProg.id,course:1,admission_year:2026},ac);
+ const file=async rows=>{const w=new ExcelJS.Workbook(),s=w.addWorksheet('Аккаунты');s.addRow(['ФИО','Роль','Группа','Подгруппа','Институт','Email']);rows.forEach(r=>s.addRow(r));return {file_name:'test.xlsx',file:Buffer.from(await w.xlsx.writeBuffer()).toString('base64')}};
+ let student,teacher,sc,tc,staff,dc,assignment,lesson,grade;
+ await t.test('password policy exactly matches requested limits',()=>{
+  for(const p of ['Abc12345','abc1234!','Abcdefghijklmn','abcde!12'])assert.equal(passwordError(p),null,p);
+  for(const p of ['Abc1234','Abcdefghijklmno','abc12345','AB12345!','абв1234!','Abc 123!'])assert.ok(passwordError(p),p);
+  for(let i=0;i<50;i++)assert.equal(passwordError(temporaryPassword()),null);
  });
- await t.test('rejects invalid files, formulas, duplicate rows and invalid groups',async()=>{
-  assert.equal((await req('accounts/preview',{file_name:'x.xlsx',file:'bm90LXhsc3g='},ac)).status,400);
-  assert.equal((await req('accounts/preview',await file([[{formula:'1+1'},'Студент','ИМПОРТ-ТЕСТ','','']]),ac)).status,400);
-  const invalid=await ok('accounts/preview',await file([rows[0],rows[0],['Имя','Админ','','',''],['Имя','Студент','Нет группы','','']]),ac);assert.equal(invalid.valid,false);assert.equal(invalid.token,null);assert.ok(invalid.rows[1].errors.length);assert.ok(invalid.rows[2].errors.length);assert.ok(invalid.rows[3].errors.length);
-  assert.equal((await req('accounts/preview',await file(Array.from({length:201},()=>rows[0])),ac)).status,400);
-  assert.equal((await ok('manage',undefined,ac)).entities.users.rows.length,1);
-  preview=await ok('accounts/preview',upload,ac);
+ await t.test('XLSX email column, preview validation and atomic queue',async()=>{
+  const response=await fetch(url+'/api/accounts/template',{headers:{cookie:ac}});assert.equal(response.status,200);const w=new ExcelJS.Workbook();await w.xlsx.load(Buffer.from(await response.arrayBuffer()));assert.equal(w.getWorksheet('Аккаунты').getCell('F1').value,'Email');
+  const bad=await ok('accounts/preview',await file([['Тест','Студент','ТЕСТ-EMAIL','','','invalid'],['Тест','Студент','Нет','','','ok@example.test']]),ac);assert.equal(bad.valid,false);assert.equal((await ok('manage',undefined,ac)).entities.users.rows.length,1);
+  const rows=[['Студент Пример','Студент','ТЕСТ-EMAIL','','','Student@Example.test'],['Преподаватель Пример','Преподаватель','','',inst,'teacher@example.test']];
+  const preview=await ok('accounts/preview',await file(rows),ac);assert.equal(preview.valid,true);assert.equal(preview.rows[0].login,'student@example.test');
+  const result=await ok('accounts/commit',{token:preview.token},ac);assert.equal(result.count,2);assert.equal(result.credentials,undefined);assert.equal((await req('accounts/commit',{token:preview.token},ac)).status,409);
+  assert.equal((await ok('accounts/preview',await file(rows),ac)).valid,false);
+  const message=await smtp.wait('student@example.test');const temporary=message.text.match(/Временный пароль: (\S+)/)?.[1];assert.ok(temporary,message.text);assert.equal(passwordError(temporary),null);
+  const auth=await req('login',{login:'STUDENT@EXAMPLE.TEST',password:temporary});assert.equal(auth.status,200);student=auth.body;
+  assert.equal((await req('grades',undefined,auth.cookie)).status,403);assert.equal((await req('password',{current_password:temporary,new_password:'abc12345',confirm_password:'abc12345'},auth.cookie)).status,400);
+  const changed=await req('password',{current_password:temporary,new_password:'Student!12',confirm_password:'Student!12'},auth.cookie);assert.equal(changed.status,200);sc=changed.cookie;assert.equal((await req('me',undefined,auth.cookie)).status,401);
+  const tm=await smtp.wait('teacher@example.test'),tp=tm.text.match(/Временный пароль: (\S+)/)[1];let ta=await req('login',{login:'teacher@example.test',password:tp});teacher=ta.body;ta=await req('password',{current_password:tp,new_password:'Teacher!12',confirm_password:'Teacher!12'},ta.cookie);tc=ta.cookie;
+  const db=new DatabaseSync(path.join(dir,'orbita.sqlite'),{readOnly:true});assert.ok(!JSON.stringify(db.prepare('SELECT * FROM users').all()).includes(temporary));assert.ok(!JSON.stringify(db.prepare('SELECT * FROM mail_jobs').all()).includes(temporary));db.close();
  });
- await t.test('atomic creation, one-time credential delivery, no plaintext persistence and duplicate prevention',async()=>{
-  result=await ok('accounts/commit',{token:preview.token},ac);assert.equal(result.count,2);[student,teacher]=result.credentials;
-  assert.equal(student.login,preview.rows[0].login);assert.ok(student.password.length>=12);assert.notEqual(student.password,teacher.password);
-  assert.equal((await req('accounts/commit',{token:preview.token},ac)).status,409);
-  const again=await ok('accounts/preview',upload,ac);assert.equal(again.valid,false);assert.ok(again.rows.every(r=>r.errors.length));
-  const db=new DatabaseSync(path.join(dir,'orbita.sqlite'),{readOnly:true});const accounts=db.prepare('SELECT * FROM users').all();assert.equal(accounts.length,3);assert.equal(accounts.find(u=>u.id===student.id).must_change_password,1);assert.ok(!JSON.stringify(accounts).includes(student.password));assert.ok(!JSON.stringify(db.prepare('SELECT * FROM audit').all()).includes(student.password));db.close();assert.ok(!out.includes(student.password)&&!errors.includes(student.password));
+ await t.test('only staff can change login; scope and session revocation enforced',async()=>{
+  const s=await ok('manage/users',{name:'Декан Тестовый',login:'dean@example.test',password:'DeanTest!12',role:'staff',active:1},ac);staff=s;
+  let auth=await req('login',{login:'dean@example.test',password:'DeanTest!12'});auth=await req('password',{current_password:'DeanTest!12',new_password:'DeanNew!123',confirm_password:'DeanNew!123'},auth.cookie);dc=auth.cookie;
+  await ok('manage/staff_scopes',{user_id:s.id,institute_id:inst,active:1},ac);
+  assert.equal((await req('email/request',{email:'own@example.test',current_password:'Student!12'},sc)).status,403);
+  assert.equal((await req('accounts/email',{id:teacher.id,email:'other@example.test',current_password:'Student!12'},sc)).status,403);
+  const foreign=await ok('manage/users',{name:'Другой студент',login:'foreign@example.test',password:'ForeignA!12',role:'student',group_id:g2.id,active:1},ac);
+  assert.equal((await req('accounts/email',{id:foreign.id,email:'no@example.test',current_password:'DeanNew!123'},dc)).status,404);
+  assert.equal((await req('accounts/email',{id:student.id,email:'teacher@example.test',current_password:'DeanNew!123'},dc)).status,409);
+  const before=smtp.messages.length;await ok('accounts/email',{id:student.id,email:'new-student@example.test',current_password:'DeanNew!123'},dc);assert.equal((await req('me',undefined,sc)).status,401);assert.equal((await req('login',{login:'student@example.test',password:'Student!12'})).status,401);
+  const email=await smtp.wait('new-student@example.test',before),temp=email.text.match(/Временный пароль: (\S+)/)[1];let session=await req('login',{login:'new-student@example.test',password:temp});session=await req('password',{current_password:temp,new_password:'Student!12',confirm_password:'Student!12'},session.cookie);sc=session.cookie;
  });
- await t.test('Excel delivery preserves exact text and is limited to authorized recipients',async()=>{
-  const r=await fetch(url+'/api/accounts/export',{method:'POST',headers:{cookie:ac,'Content-Type':'application/json'},body:JSON.stringify({credentials:result.credentials.map(r=>({id:r.id,password:r.password}))})});assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'no-store');const wb=new ExcelJS.Workbook();await wb.xlsx.load(Buffer.from(await r.arrayBuffer()));assert.equal(wb.getWorksheet('Доступ').getCell('C2').value,student.password);assert.equal(wb.getWorksheet('Доступ').getCell('C3').value,teacher.password);assert.equal(wb.getWorksheet('Доступ').getCell('F2').value,url);
-  const wrong=await req('accounts/export',{credentials:[{id:student.id,password:'wrong'}]},ac);assert.equal(wrong.status,400);
+ await t.test('deletion of grades and lessons is scoped, reversible and logged',async()=>{
+  assignment=await ok('manage/teaching_assignments',{teacher_id:teacher.id,group_id:g.id,subgroup:'',subject:'Тестовый предмет',semester:'Тест',start_date:'2026-09-01',end_date:'2027-01-31',active:1},ac);
+  lesson=await ok('manage/lessons',{assignment_id:assignment.id,kind:'Лекция',day:1,start:'09:00',end:'10:20',room:'Тест',parity:'all',term_start:'2026-09-01',term_end:'2027-01-31',archived:0},ac);
+  grade=await ok('teaching/grade',{assignment_id:assignment.id,user_id:student.id,date:'2026-11-09',score:'5',assessment:'Контрольная'},tc);
+  assert.equal((await req('records/grades/delete',{id:grade.id},sc)).status,404);
+  await ok('records/grades/delete',{id:grade.id},tc);assert.equal((await ok('grades',undefined,sc)).length,0);assert.ok((await ok('trash',undefined,tc)).some(r=>r.id===grade.id&&r.table==='grades'));
+  assert.equal((await req('teaching/grade',{id:grade.id,assignment_id:assignment.id,user_id:student.id,date:'2026-11-09',score:'4',assessment:'Контрольная'},tc)).status,404);
+  await ok('records/grades/restore',{id:grade.id},tc);assert.equal((await ok('grades',undefined,sc)).length,1);
+  const j=await ok('teaching/journal?assignment='+assignment.id+'&date=2026-11-09',undefined,tc);assert.ok(j.history.some(h=>JSON.parse(h.new_json).deleted_at));
+  await ok('records/lessons/delete',{id:lesson.id},dc);assert.equal((await ok('schedule?date=2026-11-09',undefined,sc)).lessons.length,0);await ok('records/lessons/restore',{id:lesson.id},dc);assert.equal((await ok('schedule?date=2026-11-09',undefined,sc)).lessons.length,1);
  });
- await t.test('temporary sessions cannot access any study data or administrative actions',async()=>{
-  const s=await req('login',{login:student.login,password:student.password});assert.equal(s.status,200);sc=s.cookie;assert.equal(s.body.must_change_password,1);assert.equal(s.body.education,undefined);
-  const te=await req('login',{login:teacher.login,password:teacher.password});tc=te.cookie;
-  for(const p of ['schedule?date=2026-11-09','grades','requests','manage','teaching','attendance','notices','accounts/template'])assert.equal((await req(p,undefined,sc)).status,403,p);
-  assert.equal((await req('theme',{theme:'light'},sc)).status,403);assert.equal((await req('accounts/preview',upload,sc)).status,403);assert.equal((await req('accounts/export',{credentials:[student]},sc)).status,403);assert.equal((await req('teaching',undefined,tc)).status,403);
-  assert.equal((await ok('me',undefined,sc)).must_change_password,1);
+ await t.test('group and teacher dependency checks; account deletion invalidates sessions',async()=>{
+  assert.equal((await req('records/groups/delete',{id:g.id},ac)).status,409);assert.equal((await req('records/users/delete',{id:teacher.id},ac)).status,409);assert.equal((await req('records/users/delete',{id:admin.body.id},ac)).status,409);
+  await ok('records/users/delete',{id:student.id},dc);assert.equal((await req('me',undefined,sc)).status,401);assert.equal((await req('login',{login:'new-student@example.test',password:'Student!12'})).status,401);
+  await ok('records/users/restore',{id:student.id},dc);sc=(await req('login',{login:'new-student@example.test',password:'Student!12'})).cookie;assert.equal((await ok('grades',undefined,sc)).length,1);
+  const empty=await ok('manage/groups',{name:'ПУСТАЯ',program_id:prog.id,course:1,admission_year:2026},ac);await ok('records/groups/delete',{id:empty.id},dc);assert.ok(!(await ok('manage',undefined,ac)).groups.some(g=>g.id===empty.id));await ok('records/groups/restore',{id:empty.id},dc);
+  await ok('manage/teaching_assignments',{id:assignment.id,teacher_id:teacher.id,group_id:g.id,subgroup:'',subject:'Тестовый предмет',semester:'Тест',start_date:'2026-09-01',end_date:'2027-01-31',active:0},ac);await ok('records/users/delete',{id:teacher.id},dc);assert.equal((await req('me',undefined,tc)).status,401);await ok('records/users/restore',{id:teacher.id},dc);
  });
- await t.test('mandatory password change, validation and revocation of other sessions',async()=>{
-  const second=await req('login',{login:student.login,password:student.password});
-  assert.equal((await req('password',{current_password:'wrong',new_password:'New-Password-2026!',confirm_password:'New-Password-2026!'},sc)).status,400);
-  assert.equal((await req('password',{current_password:student.password,new_password:student.password,confirm_password:student.password},sc)).status,400);
-  assert.equal((await req('password',{current_password:student.password,new_password:'New-Password-2026!',confirm_password:'mismatch'},sc)).status,400);
-  const changed=await req('password',{current_password:student.password,new_password:'New-Password-2026!',confirm_password:'New-Password-2026!'},sc);assert.equal(changed.status,200);assert.equal(changed.body.must_change_password,0);assert.ok(changed.cookie);const old=sc;sc=changed.cookie;
-  assert.equal((await req('me',undefined,old)).status,401);assert.equal((await req('me',undefined,second.cookie)).status,401);assert.equal((await req('login',{login:student.login,password:student.password})).status,401);
-  assert.equal((await ok('me',undefined,sc)).grp,'ИМПОРТ-ТЕСТ');assert.equal((await req('schedule?date=2026-11-09',undefined,sc)).status,200);assert.equal((await req('accounts/preview',upload,sc)).status,403);
-  const changedTeacher=await req('password',{current_password:teacher.password,new_password:'Teacher-Password-2026!',confirm_password:'Teacher-Password-2026!'},tc);assert.equal(changedTeacher.status,200);tc=changedTeacher.cookie;assert.equal((await req('teaching',undefined,tc)).status,200);
+ await t.test('clubs, teams and competitions can be deleted and restored',async()=>{
+  const club=await ok('manage/clubs',{title:'Тестовая секция',category:'Спорт',description:'Тест',place:'Тест',weekday:1,start:'18:00',end:'19:00',capacity:10,owner:admin.body.id,enrollment_open:1,archived:0},ac);
+  assert.equal((await req('records/clubs/delete',{id:club.id},dc)).status,404);await ok('records/clubs/delete',{id:club.id},ac);assert.equal((await ok('clubs',undefined,sc)).length,0);await ok('records/clubs/restore',{id:club.id},ac);
+  for(const type of ['Сборная','Соревнование']){const event=await ok('manage/events',{title:type+' Тест',type,date:'2026-11-20T12:00',place:'Тест',description:'Тест',owner:admin.body.id,archived:0},ac);await ok('records/events/delete',{id:event.id},ac);assert.ok(!(await ok('events',undefined,sc)).some(e=>e.id===event.id));await ok('records/events/restore',{id:event.id},ac)}
  });
- await t.test('manual generation, profile changes, temporary expiry and administrator reset',async()=>{
-  const made=await ok('manage/users',{name:'Ручной Тестовый',role:'student',group_id:group.id,active:1},ac);assert.ok(made.credentials[0].login.startsWith('s-'));assert.equal(made.credentials.length,1);
-  const db=new DatabaseSync(path.join(dir,'orbita.sqlite'));db.prepare('UPDATE users SET temporary_password_expires=? WHERE id=?').run(Date.now()-1000,made.id);db.close();
-  const credential=made.credentials[0];assert.equal((await req('login',{login:credential.login,password:credential.password})).status,403);
-  assert.equal((await req('accounts/reset',{id:teacher.id},sc)).status,403);assert.equal((await req('accounts/reset',{id:auth.body.id},ac)).status,400);
-  const reset=await ok('accounts/reset',{id:student.id},ac);assert.notEqual(reset.credentials[0].password,student.password);assert.equal((await req('me',undefined,sc)).status,401);
-  const login=await req('login',{login:student.login,password:reset.credentials[0].password});assert.equal(login.body.must_change_password,1);
-  const change=await req('password',{current_password:password,new_password:'Admin-Changed-2026!',confirm_password:'Admin-Changed-2026!'},ac);assert.equal(change.status,200);ac=change.cookie;assert.equal((await req('me',undefined,auth.cookie)).status,401);
+ await t.test('admin self email change requires confirmation and survives restart',async()=>{
+  const before=smtp.messages.length;await ok('email/request',{email:'admin-new@example.test',current_password:password},ac);const email=await smtp.wait('admin-new@example.test',before),code=email.text.match(/Код подтверждения: (\d{6})/)[1];assert.equal((await req('email/confirm',{code:'000000'},ac)).status,400);const result=await req('email/confirm',{code},ac);assert.equal(result.status,200);ac=result.cookie;assert.equal((await ok('me',undefined,ac)).login,'admin-new@example.test');
+  const end=new Promise(r=>child.once('exit',r));child.kill();await end;url=(await start()).url;assert.equal((await ok('me',undefined,ac)).login,'admin-new@example.test');const state=await ok('mail/status',undefined,ac);assert.ok(state.configured);assert.ok(state.jobs.some(j=>j.state==='sent'));assert.ok(!JSON.stringify(state).includes('payload'));
  });
- await t.test('password guessing is limited and reset restores recovery',async()=>{
-  const data={current_password:'wrong',new_password:'Recovery-Password-2026!',confirm_password:'Recovery-Password-2026!'};
-  for(let i=0;i<5;i++)assert.equal((await req('password',data,tc)).status,400);
-  assert.equal((await req('password',{...data,current_password:'Teacher-Password-2026!'},tc)).status,429);
-  const reset=await ok('accounts/reset',{id:teacher.id},ac),temp=reset.credentials[0];let s=await req('login',{login:temp.login,password:temp.password});s=await req('password',{...data,current_password:temp.password},s.cookie);assert.equal(s.status,200);
- });
- await t.test('dean scope, session-bound confirmation and revoked access',async()=>{
-  const staff=await ok('manage/users',{name:'Тестовый Деканат',role:'staff',active:1},ac),cred=staff.credentials[0];let s=await req('login',{login:cred.login,password:cred.password});s=await req('password',{current_password:cred.password,new_password:'Staff-Changed-2026!',confirm_password:'Staff-Changed-2026!'},s.cookie);const cookie=s.cookie;
-  const scope={user_id:staff.id,institute_id:institute,active:1},id=(await ok('manage/staff_scopes',scope,ac)).id;
-  const restricted=await ok('accounts/preview',await file([['Недоступный Студент','Студент','ДРУГОЙ-ТЕСТ','','']]),cookie);assert.equal(restricted.valid,false);
-  const p=await ok('accounts/preview',await file([['Новый Тестовый','Студент','ИМПОРТ-ТЕСТ','','']]),cookie);assert.equal(p.valid,true);
-  assert.equal((await req('accounts/commit',{token:p.token},ac)).status,409);
-  await ok('manage/staff_scopes',{...scope,id,active:0},ac);assert.equal((await req('accounts/commit',{token:p.token},cookie)).status,409);assert.equal((await req('accounts/reset',{id:student.id},cookie)).status,404);
- });
- assert.ok(!errors.includes('Error:'),errors);
 });

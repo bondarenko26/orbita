@@ -7,3 +7,7 @@
 - uuid 11.1.1 — транзитивная зависимость ExcelJS, зафиксированная override из-за исправления проверки границ буфера; лицензия MIT: https://github.com/uuidjs/uuid . Прикладные логины, пароли и сессии генерируются встроенным node:crypto, а не uuid.
 
 Версии остальных транзитивных зависимостей и integrity-суммы находятся в package-lock.json. После установки проверены npm audit и прикладные интеграционные тесты.
+
+- Nodemailer 10.5.0 — отправка SMTP с TLS, MIT-0: https://github.com/nodemailer/nodemailer/blob/master/LICENSE .
+
+- JSZip 3.10.2 — настройка quotePrefix в сформированном XLSX, MIT (выбранная лицензия из MIT/GPLv3): https://github.com/Stuk/jszip . Ранее транзитивная зависимость ExcelJS, теперь объявлена явно.
