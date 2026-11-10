@@ -27,7 +27,7 @@ test('MGSU permissions and complete academic workflows',async t=>{
  const p1=nodes.find(n=>n.kind==='program'),i1=institute(p1),p2=nodes.find(n=>n.kind==='program'&&institute(n)!==i1),i2=institute(p2);
  const g1=await ok('manage/groups',{name:'ТЕСТ-А',program_id:p1.id,course:1,admission_year:2026},ac),g2=await ok('manage/groups',{name:'ТЕСТ-Б',program_id:p2.id,course:1,admission_year:2026},ac);
  const profiles=new Map();
- async function account(login,role,group_id=null,institute_id=null,subgroup='',who=ac){const profile={login,name:'Вымышленный '+login,password:'Isolated-Password-2026',role,group_id,institute_id,subgroup,active:1};const made=await ok('manage/users',profile,who);profiles.set(login,{...profile,id:made.id});const r=await req('login',{login,password:profile.password});assert.equal(r.status,200);return r}
+ async function account(login,role,group_id=null,institute_id=null,subgroup='',who=ac){const profile={login,name:'Вымышленный '+login,password:'Isolated-Password-2026',role,group_id,institute_id,subgroup,active:1};const made=await ok('manage/users',profile,who);profiles.set(login,{...profile,id:made.id});let r=await req('login',{login,password:profile.password});assert.equal(r.status,200);if(r.body.must_change_password){r=await req('password',{current_password:profile.password,new_password:'Changed-Fixture-2026!',confirm_password:'Changed-Fixture-2026!'},r.cookie);assert.equal(r.status,200)}return r}
  const staff=await account('dean-a','staff'),staff2=await account('dean-b','staff');
  const scope={user_id:staff.body.id,institute_id:i1,active:1},scopeId=await ok('manage/staff_scopes',scope,ac);
  await ok('manage/staff_scopes',{user_id:staff2.body.id,institute_id:i2,active:1},ac);

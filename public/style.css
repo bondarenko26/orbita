@@ -6,3 +6,7 @@
 
 .profile-actions{display:flex;flex-wrap:wrap;gap:16px;margin-top:28px;padding-top:4px}.inbox-group+.inbox-group{margin-top:36px}
 .program-picker{grid-column:1/-1;min-width:0;border:1px solid var(--line);border-radius:16px;padding:16px}.program-picker legend{color:var(--accent);padding:0 8px}.attendance-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;padding:15px 0;border-bottom:1px solid var(--line)}.attendance-row label{margin:0}.attendance-row .error{grid-column:1/-1}.program-picker select,.editor select{max-width:100%}#teaching-message{color:var(--green);padding:10px 0}
+.credentials-dialog{width:min(620px,calc(100% - 32px));max-height:90vh;overflow:auto;padding:24px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:24px}
+.credentials-dialog::backdrop{background:rgba(0,0,0,.75)}
+.credentials-dialog h2{margin-top:0}.access-list{display:grid;gap:12px;margin:20px 0}.access-list dl{display:grid;gap:6px;margin:12px 0}.access-list dd{margin:0;overflow-wrap:anywhere}.access-list dt{color:var(--muted)}
+#import-preview{margin-top:24px}#import-preview>.primary{margin-top:24px}input[type=file]{max-width:100%;padding:12px 0}form[data-password-change]{max-width:480px}form[data-password-change] input{width:100%}

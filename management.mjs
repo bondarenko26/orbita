@@ -1,3 +1,4 @@
+import {TEMP_LIFETIME,temporaryPassword,uniqueLogin,passwordError} from './credentials.mjs';
 import {installAcademic} from './academic.mjs';
 // Administrative domain: explicit fields, validation and server-side ownership.
 export function installManagement(db,ctx){
@@ -51,23 +52,25 @@ export function installManagement(db,ctx){
  if(v.course!==undefined)integer(v.course,1,8);
  if(v.grp&&!one('SELECT id FROM groups WHERE name=?',v.grp))fail(400,'Сначала создайте группу в справочнике');
  if(table==='users'&&v.role==='student'&&!v.grp)fail(400,'Студенту нужна группа');
+ if(table==='users'){if(!/^[a-zA-Z0-9][a-zA-Z0-9._-]{2,79}$/.test(v.login))fail(400,'Логин: 3–80 латинских букв, цифр, точек, дефисов или подчёркиваний');if(old?.id===u.id&&v.password)fail(400,'Свой пароль меняйте в профиле');if(!old||v.password){v.must_change_password=1;v.temporary_password_expires=Date.now()+TEMP_LIFETIME;}}
  if(v.owner&&!one("SELECT id FROM users WHERE id=? AND active=1 AND role IN ('manager','admin')",v.owner))fail(400,'Выберите активного руководителя');
  if(table!=='staff_scopes'&&v.user_id&&!one("SELECT id FROM users WHERE id=? AND role='student'",v.user_id))fail(400,'Студент не найден');
  if(table==='clubs'){integer(v.capacity,1,1000);if(old&&one("SELECT count(*) n FROM memberships WHERE club_id=? AND status='Вы приняты'",old.id).n>v.capacity)fail(409,'Мест меньше, чем принятых участников');}
  if(table==='users'&&old){if(old.id===u.id&&(v.role!=='admin'||v.active!==1))fail(409,'Нельзя заблокировать себя или снять свою роль администратора');if(['admin','manager'].includes(old.role)&&(!['admin','manager'].includes(v.role)||!v.active)&&(one('SELECT id FROM clubs WHERE owner=? AND archived=0',old.id)||one('SELECT id FROM events WHERE owner=? AND archived=0',old.id)))fail(409,'Сначала передайте секции и события другому ответственному');}
  return v;
  }
- function hashPassword(x){if(typeof x!=='string'||x.length<12||x.length>200)fail(400,'Пароль: от 12 до 200 символов');return hash(x)}
- function save(table,b,u){const schema=Object.hasOwn(schemas,table)?schemas[table]:null;if(!schema||!schema.roles.includes(u.role))fail(403,'Недостаточно прав');const id=b.id?integer(b.id,1,1000000):null,old=id?owned(table,id,u):null;if(schema.singleton&&id!==1)fail(400,'Редактируйте существующие настройки');const v=validate(table,b,u,old);return transaction(()=>{
+ function hashPassword(x){const error=passwordError(x);if(error)fail(400,error);return hash(x)}
+ function save(table,b,u){const schema=Object.hasOwn(schemas,table)?schemas[table]:null;if(!schema||!schema.roles.includes(u.role))fail(403,'Недостаточно прав');const id=b.id?integer(b.id,1,1000000):null,old=id?owned(table,id,u):null;if(schema.singleton&&id!==1)fail(400,'Редактируйте существующие настройки');let issued;if(table==='users'&&!old){b={...b,login:b.login||uniqueLogin(b.role,v=>one('SELECT id FROM users WHERE login=?',v)),password:b.password||temporaryPassword()}}if(table==='users'&&b.password)issued={name:b.name,login:b.login,password:b.password};const v=validate(table,b,u,old);return transaction(()=>{
  const keys=Object.keys(v);let recordId=id;if(old){run(`UPDATE ${table} SET ${keys.map(k=>k+'=?').join(',')} WHERE id=?`,...keys.map(k=>v[k]),id)}else{recordId=Number(run(`INSERT INTO ${table}(${keys.join(',')}) VALUES(${keys.map(()=>'?').join(',')})`,...keys.map(k=>v[k])).lastInsertRowid)}
  if(table==='groups'&&old&&v.name!==old.name){run('UPDATE users SET grp=? WHERE grp=?',v.name,old.name);run('UPDATE lessons SET grp=? WHERE grp=?',v.name,old.name)}
  if(table==='users'&&old&&(v.password||v.role!==old.role||v.active!==old.active))run('DELETE FROM sessions WHERE user_id=?',id);
+ if(table==='users'&&old&&v.password)run('DELETE FROM password_attempts WHERE user_id=?',id);
  if(table==='lessons'){forGroup(v,old?'Изменение расписания':'Новое занятие',`${v.subject}: ${v.start}–${v.end}, ${v.room}${v.archived?' · убрано из расписания':''}`);if(old&&old.grp!==v.grp)forGroup(old,'Изменение расписания',`${old.subject}: занятие переназначено другой группе`)}
  if(table==='clubs'&&old)for(const m of all('SELECT user_id FROM memberships WHERE club_id=?',id))notify(m.user_id,'Изменение в секции «'+v.title+'»',`${v.start}–${v.end}, ${v.place}${v.archived?' · секция в архиве':''}`);
  if(table==='grades')notify(v.user_id,'Обновлена успеваемость',`${v.subject}: ${v.score}`);
  if(table==='notices'&&old)run('DELETE FROM reads WHERE notice_id=?',id);
  academic.afterSave(table,v,old,recordId,u);
- audit(u,old?'update':'create',table,recordId);return {id:recordId};});}
+ audit(u,old?'update':'create',table,recordId);return {id:recordId,...(issued?{credentials:[{...issued,id:recordId,expires:v.temporary_password_expires}]}:{})};});}
  function calendar(d,u){const day=new Date(d+'T12:00:00Z').getUTCDay(),settings=one('SELECT * FROM settings WHERE id=1'),week=settings.week_anchor?Math.floor((Date.parse(d)-Date.parse(settings.week_anchor))/604800000)+1:null;
  let lessons=all(`SELECT l.*,n.text AS note FROM lessons l LEFT JOIN notes n ON n.lesson_id=l.id AND n.user_id=? AND n.date=? WHERE l.archived=0 AND l.grp=? AND (l.subgroup='' OR l.subgroup=?) AND ? BETWEEN l.term_start AND l.term_end AND ((l.date IS NULL AND l.day=? AND (l.parity='all' OR l.parity=?)) OR l.date=?) ORDER BY start`,u.id,d,u.grp,u.subgroup||'',d,day,week===null?'':week%2?'odd':'even',d);
  const exceptions=all(`SELECT x.* FROM exceptions x JOIN lessons l ON l.id=x.lesson_id WHERE l.archived=0 AND l.grp=? AND (l.subgroup='' OR l.subgroup=?) AND (x.original_date=? OR x.new_date=?)`,u.grp,u.subgroup||'',d,d);

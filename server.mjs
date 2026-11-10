@@ -1,3 +1,5 @@
+import {migrateCredentials,installCredentials} from './credentials.mjs';
+import {installAccounts} from './accounts.mjs';
 import { installManagement } from './management.mjs';
 import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
@@ -28,8 +30,9 @@ function seed(){
  const password=randomBytes(15).toString('base64url');run('INSERT INTO users(login,password,name,role,faculty,program,course,grp) VALUES(?,?,?,?,?,?,?,?)','admin',hash(password),'Администратор','admin','','',1,'');
  console.log('Первый запуск пустой базы. admin / '+password);
 }
+migrateCredentials(db);
 seed();
-const safeUser=u=>management.academic.me(u);
+const safeUser=u=>u.must_change_password?{id:u.id,login:u.login,name:u.name,role:u.role,theme:u.theme,must_change_password:1,temporary_password_expires:u.temporary_password_expires}:management.academic.me(u);
 const tokenHash=t=>createHash('sha256').update(t).digest('hex');
 const limits=new Map();
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status})};
@@ -38,22 +41,30 @@ const allowed=(v,values)=>{if(!values.includes(v))fail(400,'Недопустим
 function date(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v))||new Date(v).toISOString().slice(0,10)!==v)fail(400,'Неверная дата');return v}
 function time(v){if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(v))fail(400,'Неверное время');return v}
 const roles=(u,...r)=>{if(!r.includes(u.role))fail(403,'Недостаточно прав')};
+const credentials=installCredentials(db,{fail,hash,verify});
 const management=installManagement(db,{hash,fail,required,allowed,date,time});
+const accounts=installAccounts(db,{fail,management,tokenHash});
 async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
- const url=new URL(req.url,'http://localhost');const p=url.pathname;
+ const url=new URL(req.url,process.env.PUBLIC_ORIGIN||('http://'+req.headers.host));const p=url.pathname;
  const send=(data,status=200)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))};
  try{
- if(!p.startsWith('/api/')){const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/management-ui.js':'management-ui.js','/teaching-ui.js':'teaching-ui.js'};if(!files[p])fail(404,'Не найдено');res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript; charset=utf-8':p.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(path.join(root,'public',files[p])));return;}
- let b={};if(!['GET','HEAD'].includes(req.method)){const origin=req.headers.origin;if(origin&&origin!==(process.env.PUBLIC_ORIGIN||`http://${req.headers.host}`))fail(403,'Источник запроса не разрешён');if(!req.headers['content-type']?.startsWith('application/json'))fail(415,'Ожидается JSON');let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>16000)fail(413,'Слишком большой запрос')}try{b=JSON.parse(raw||'{}')}catch{fail(400,'Некорректный JSON')}}
+ if(!p.startsWith('/api/')){const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/management-ui.js':'management-ui.js','/teaching-ui.js':'teaching-ui.js','/accounts-ui.js':'accounts-ui.js'};if(!files[p])fail(404,'Не найдено');res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript; charset=utf-8':p.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(path.join(root,'public',files[p])));return;}
  const cookie=req.headers.cookie?.match(/(?:^|; )orbita=([a-f0-9]{64})(?:;|$)/)?.[1];
- const u=cookie?one('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE u.active=1 AND s.token=? AND s.expires>?',tokenHash(cookie),Date.now()):null;
+ let u=cookie?one('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE u.active=1 AND s.token=? AND s.expires>?',tokenHash(cookie),Date.now()):null;
+ if(['/api/accounts/preview','/api/accounts/export'].includes(p)&&(!u||!['admin','staff'].includes(u.role)||u.must_change_password))fail(u?403:401,'Недостаточно прав');
+ let b={};if(!['GET','HEAD'].includes(req.method)){const origin=req.headers.origin;if(origin&&origin!==(process.env.PUBLIC_ORIGIN||`http://${req.headers.host}`))fail(403,'Источник запроса не разрешён');if(!req.headers['content-type']?.startsWith('application/json'))fail(415,'Ожидается JSON');const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>(p==='/api/accounts/preview'?1500000:p==='/api/accounts/export'?128000:16000))fail(413,'Слишком большой запрос');chunks.push(chunk)}try{b=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}')}catch{fail(400,'Некорректный JSON')}if(!b||typeof b!=='object'||Array.isArray(b))fail(400,'Ожидается объект JSON')}
+ 
+ u=cookie?one('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE u.active=1 AND s.token=? AND s.expires>?',tokenHash(cookie),Date.now()):null;
  if(p==='/api/login'&&req.method==='POST'){
  const peer=req.socket.remoteAddress;const trusted=process.env.TRUST_PROXY==='loopback'&&['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer);const ip=trusted&&req.headers['x-forwarded-for']?String(req.headers['x-forwarded-for']).split(',').at(-1).trim():peer;
  for(const [key,entry]of limits)if(entry.until<Date.now())limits.delete(key);let l=limits.get(ip);if(!l)limits.set(ip,l={n:0,until:Date.now()+900000});if(l.n>=20)fail(429,'Слишком много попыток. Повторите через 15 минут.');
- const login=required(b,'login',80),password=required(b,'password',200);const user=one('SELECT * FROM users WHERE login=?',login);if(!user||!user.active||!verify(password,user.password)){l.n++;fail(401,'Неверный логин или пароль')}const token=randomBytes(32).toString('hex');run('DELETE FROM sessions WHERE expires<?',Date.now());run('INSERT INTO sessions VALUES(?,?,?)',tokenHash(token),user.id,Date.now()+86400000);res.setHeader('Set-Cookie',`orbita=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${process.env.PUBLIC_ORIGIN?.startsWith('https:')?'; Secure':''}`);send(safeUser(user));return;}
+ const login=required(b,'login',80),password=required(b,'password',200);const user=one('SELECT * FROM users WHERE login=?',login);if(!user||!user.active||!verify(password,user.password)){l.n++;fail(401,'Неверный логин или пароль')}if(user.must_change_password&&user.temporary_password_expires&&user.temporary_password_expires<Date.now())fail(403,'Временный пароль истёк. Попросите сотрудника выдать новый');const token=randomBytes(32).toString('hex');run('DELETE FROM sessions WHERE expires<?',Date.now());run('INSERT INTO sessions VALUES(?,?,?)',tokenHash(token),user.id,Date.now()+86400000);res.setHeader('Set-Cookie',`orbita=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${process.env.PUBLIC_ORIGIN?.startsWith('https:')?'; Secure':''}`);send(safeUser(user));return;}
  if(!u)fail(401,'Войдите в аккаунт');
  if(p==='/api/logout'&&req.method==='POST'){run('DELETE FROM sessions WHERE token=?',tokenHash(cookie));res.setHeader('Set-Cookie','orbita=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');send({ok:true});return}
+ if(u.must_change_password&&u.temporary_password_expires&&u.temporary_password_expires<Date.now())fail(401,'Временный пароль истёк. Попросите сотрудника выдать новый');
+ if(p==='/api/password'&&req.method==='POST'){send(safeUser(credentials.change(b,u,res)));return}
+ if(u.must_change_password&&p!=='/api/me')fail(403,'Сначала смените временный пароль');
  if(p==='/api/me'&&req.method==='GET'){send(safeUser(u));return}
  if(p==='/api/theme'&&req.method==='POST'){run('UPDATE users SET theme=? WHERE id=?',allowed(b.theme,['dark','light','violet']),u.id);send({ok:true});return}
  if(p==='/api/schedule'&&req.method==='GET'){send(u.role==='teacher'?management.academic.calendar(date(url.searchParams.get('date')||''),u,management.calendar):management.calendar(date(url.searchParams.get('date')||''),u));return;}
@@ -83,6 +94,7 @@ async function handler(req,res){
  const id=Number(p.split('/')[3]);const d=one("SELECT d.*,r.type,u.name FROM documents d JOIN requests r ON r.id=d.request_id JOIN users u ON u.id=r.user_id WHERE r.id=? AND r.user_id=? AND r.status='Готова'",id,u.id);if(!d)fail(404,'Документ не найден');res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8','Content-Disposition':'attachment; filename="orbita-document-'+id+'.txt"','Cache-Control':'no-store'});res.end('КОНКУРСНЫЙ ОБРАЗЕЦ · НЕ ОФИЦИАЛЬНЫЙ ДОКУМЕНТ\n\n'+d.type+' №'+id+'\n'+d.name+'\n\n'+d.content+'\n\nДата выдачи: '+d.created);return;
  }
  if(p==='/api/leave'&&req.method==='POST'){run('DELETE FROM memberships WHERE user_id=? AND club_id=?',u.id,Number(b.club_id));send({ok:true});return;}
+ if(await accounts.handle(p,req.method,b,u,send,res,url,tokenHash(cookie)))return;
  if(await management.academic.handle(p,req.method,b,u,send,url,management.calendar))return;
  if(await management.handle(p,req.method,b,u,send))return;
  fail(404,'Не найдено');
