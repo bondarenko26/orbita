@@ -17,3 +17,12 @@ button.danger{color:var(--red,#ff746f);border:1px solid currentColor;margin-top:
 .editor>.editor-grid,.editor>p,form[data-journal="grade"]>.editor-grid,form[data-journal="grade"]>p{flex:0 0 100%;min-width:0}
 .editor>button,.editor>button.primary,form[data-journal="grade"]>button{margin:0}
 @media(max-width:720px){.editor>button,form[data-journal="grade"]>button{width:100%}}
+
+.back-link{display:inline-flex;align-items:center;margin-bottom:20px;padding:8px 0;border:0;background:transparent;color:var(--accent)}
+.services-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.service-card{display:flex;align-items:center;gap:16px;min-width:0;text-align:left;padding:24px;border-radius:23px}
+.service-icon{display:grid;place-items:center;flex-shrink:0;width:48px;height:48px;border-radius:15px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);font-size:26px}
+.service-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:8px}.service-copy strong{font-size:20px}.service-copy>span{font-size:13px;line-height:1.5;color:var(--muted)}.service-arrow{font-size:25px;color:var(--muted)}
+.section-tabs{display:flex;gap:8px;padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:20px;margin-bottom:24px}.section-tabs button{flex:1;min-width:0;border:0;background:transparent;padding:12px 8px;color:var(--muted)}.section-tabs button.active{background:var(--active);color:var(--onactive)}
+.section-title{margin:26px 0 16px}.club-actions{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px}.club-actions>button{margin:0}
+@media(max-width:720px){.services-grid{grid-template-columns:1fr}.service-card{padding:20px;gap:14px}.mobile-nav button{font-size:11px}.section-tabs-three{gap:3px}.section-tabs-three button{font-size:12px;padding:12px 4px}.section-tabs-three button:first-child{flex:1.25}}
