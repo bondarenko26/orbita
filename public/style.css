@@ -33,6 +33,13 @@ button.danger{color:var(--red,#ff746f);border:1px solid currentColor;margin-top:
 .rating-stars{color:var(--orange);letter-spacing:1px;font-size:19px}
 .review-comment{white-space:pre-wrap;overflow-wrap:anywhere}
 .review-actions{display:flex;gap:16px;flex-wrap:wrap}
+.icon-library{position:absolute;pointer-events:none}
+.ui-icon{display:inline-block;vertical-align:middle;flex:none}
+.top-actions .avatar,.top-actions .bell-button{width:44px;height:44px;padding:0;display:grid;place-items:center}
+.bell-button:has(use[href="#icon-bell-active"]){color:var(--accent)}
+.mobile-nav .icon{height:26px;line-height:26px}
+.profile-actions .ui-icon{margin-inline-end:6px}
+.support-ticket{overflow-wrap:anywhere}
 .star-picker{display:flex;flex-wrap:wrap;border:0;padding:0;margin:16px 0}
 .star-picker legend{color:var(--muted);font-size:14px;margin-bottom:8px}
 .star-picker label{position:relative;cursor:pointer;margin:0}

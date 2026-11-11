@@ -1,6 +1,7 @@
 import {installMail} from './mail.mjs';
 import {installDeletion} from './deletion.mjs';
 import {installTeacherReviews} from './teacher-reviews.mjs';
+import {installSupport} from './support.mjs';
 import {normalizeEmail,temporaryPassword} from './credentials.mjs';
 import {liveSql} from './deletion.mjs';
 import {migrateCredentials,installCredentials} from './credentials.mjs';
@@ -51,7 +52,12 @@ const mail=installMail(db,{dir,fail,credentials,hashPassword:hash,scope:(u,rows)
 const management=installManagement(db,{hash,fail,required,allowed,date,time,mail});
 const deletion=installDeletion(db,{fail,academic:management.academic});
 const teacherReviews=installTeacherReviews(db,fail);
+const support=installSupport(db,{required,fail});
 const accounts=installAccounts(db,{fail,management,tokenHash,mail});
+const noticeAudience=`n.user_id=? OR (n.user_id IS NULL AND (
+  coalesce(n.institute_id,'')='' OR ?='admin' OR n.institute_id=? OR
+  (?='staff' AND n.institute_id IN (SELECT institute_id FROM staff_scopes WHERE user_id=? AND active=1))))`;
+const noticeParams=u=>[u.id,u.role,management.academic.effectiveInstitute(u)??null,u.role,u.id];
 async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
  const url=new URL(req.url,process.env.PUBLIC_ORIGIN||('http://'+req.headers.host));const p=url.pathname;
@@ -96,14 +102,26 @@ async function handler(req,res){
  if(result.changes)for(const recipient of all("SELECT id FROM users WHERE active=1 AND (id=? OR role='admin')",club.owner))run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',recipient.id,'Новая запись в секцию «'+club.title+'»',`${u.name} подал(а) заявку. Откройте «Входящие» → «Запись в секции».`);
  db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}send({ok:true});return}
  if(p==='/api/events'&&req.method==='GET'){send(all('SELECT * FROM events WHERE archived=0 ORDER BY date'));return}
- if(p==='/api/notices'&&req.method==='GET'){const rows=all('SELECT n.*,r.notice_id AS is_read FROM notices n LEFT JOIN reads r ON r.notice_id=n.id AND r.user_id=? WHERE n.user_id IS NULL OR n.user_id=? ORDER BY n.id DESC',u.id,u.id);send(rows.filter(n=>n.user_id||!n.institute_id||n.institute_id===management.academic.effectiveInstitute(u)||management.academic.allowedInstitute(u,n.institute_id)));return}
- if(p==='/api/notices/read'&&req.method==='POST'){const ids=all('SELECT * FROM notices WHERE user_id IS NULL OR user_id=?',u.id).filter(n=>n.user_id||!n.institute_id||n.institute_id===management.academic.effectiveInstitute(u)||management.academic.allowedInstitute(u,n.institute_id));for(const n of ids)run('INSERT OR IGNORE INTO reads VALUES(?,?)',u.id,n.id);send({ok:true});return}
+ if(p==='/api/notices'&&req.method==='GET'){
+   send(all(`SELECT n.*,r.notice_id AS is_read FROM notices n LEFT JOIN reads r ON r.notice_id=n.id AND r.user_id=?
+     WHERE ${noticeAudience} ORDER BY n.id DESC`,u.id,...noticeParams(u)));return;
+ }
+ if(p==='/api/notices/unread'&&req.method==='GET'){
+   const unread=one(`SELECT 1 FROM notices n WHERE (${noticeAudience}) AND NOT EXISTS
+     (SELECT 1 FROM reads r WHERE r.user_id=? AND r.notice_id=n.id) LIMIT 1`,...noticeParams(u),u.id);
+   send({unread:!!unread});return;
+ }
+ if(p==='/api/notices/read'&&req.method==='POST'){
+   run(`INSERT OR IGNORE INTO reads(user_id,notice_id) SELECT ?,n.id FROM notices n WHERE ${noticeAudience}`,u.id,...noticeParams(u));
+   send({ok:true});return;
+ }
  if(/^\/api\/requests\/\d+\/document$/.test(p)&&req.method==='GET'){
  const id=Number(p.split('/')[3]);const d=one("SELECT d.*,r.type,u.name FROM documents d JOIN requests r ON r.id=d.request_id JOIN users u ON u.id=r.user_id WHERE r.id=? AND r.user_id=? AND r.status='Готова'",id,u.id);if(!d)fail(404,'Документ не найден');res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8','Content-Disposition':'attachment; filename="orbita-document-'+id+'.txt"','Cache-Control':'no-store'});res.end('КОНКУРСНЫЙ ОБРАЗЕЦ · НЕ ОФИЦИАЛЬНЫЙ ДОКУМЕНТ\n\n'+d.type+' №'+id+'\n'+d.name+'\n\n'+d.content+'\n\nДата выдачи: '+d.created);return;
  }
  if(p==='/api/leave'&&req.method==='POST'){run('DELETE FROM memberships WHERE user_id=? AND club_id=?',u.id,Number(b.club_id));send({ok:true});return;}
  if(mail.handle(p,req.method,b,u,send,res))return;
  if(teacherReviews(p,req.method,b,u,send))return;
+ if(support(p,req.method,b,u,send))return;
  if(deletion.handle(p,req.method,b,u,send))return;
  if(await accounts.handle(p,req.method,b,u,send,res,url,tokenHash(cookie)))return;
  if(await management.academic.handle(p,req.method,b,u,send,url,management.calendar))return;

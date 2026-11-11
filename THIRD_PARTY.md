@@ -11,3 +11,4 @@
 - Nodemailer 10.5.0 — отправка SMTP с TLS, MIT-0: https://github.com/nodemailer/nodemailer/blob/master/LICENSE .
 
 - JSZip 3.10.2 — настройка quotePrefix в сформированном XLSX, MIT (выбранная лицензия из MIT/GPLv3): https://github.com/Stuk/jszip . Ранее транзитивная зависимость ExcelJS, теперь объявлена явно.
+Значки из предоставленных SVG основаны на Lucide. В проект включён оригинальный текст лицензий Lucide и Feather в LUCIDE-LICENSE.txt и в SVG-спрайте страницы. Источник: https://github.com/lucide-icons/lucide/blob/main/LICENSE .

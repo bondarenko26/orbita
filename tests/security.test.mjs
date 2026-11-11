@@ -100,6 +100,31 @@ test('MGSU permissions and complete academic workflows',async t=>{
   assert.ok((await ok('notices',undefined,a.cookie)).some(n=>n.title==='Для института А'));assert.ok(!(await ok('notices',undefined,b.cookie)).some(n=>n.title==='Для института А'));
   assert.equal((await req('manage/notices',{title:'Весь вуз',body:'Тест',user_id:null,institute_id:null},staff.cookie)).status,403);
  });
+ await t.test('private support ticket, admin reply and scoped unread indicator',async()=>{
+  for(const cookie of [a.cookie,b.cookie,ac])await ok('notices/read',{},cookie);
+  await ok('manage/notices',{title:'Только А',body:'Проверка',user_id:null,institute_id:i1},staff.cookie);
+  assert.equal((await ok('notices/unread',undefined,b.cookie)).unread,false);
+  assert.equal((await ok('notices/unread',undefined,a.cookie)).unread,true);
+  await ok('notices/read',{},ac);
+  await ok('notices/read',{},a.cookie);
+  assert.equal((await req('support')).status,401);
+  assert.equal((await req('support',{subject:'',message:'Test'},a.cookie)).status,400);
+  const {id}=await ok('support',{subject:'Проблема с календарём',message:'Пустой день',author_id:b.body.id},a.cookie);
+  assert.equal((await ok('notices/unread',undefined,ac)).unread,true);
+  assert.equal((await ok('support',undefined,a.cookie))[0].id,id);
+  assert.deepEqual(await ok('support',undefined,b.cookie),[]);
+  assert.equal((await req('support/inbox',undefined,staff.cookie)).status,403);
+  assert.equal((await ok('support/inbox',undefined,ac))[0].author,a.body.name);
+  const route='support/'+id+'/reply';
+  assert.equal((await req(route,{reply:'Не мой ответ'},b.cookie)).status,403);
+  await ok(route,{reply:'Проверьте выбранную неделю'},ac);
+  assert.equal((await req(route,{reply:'Второй ответ'},ac)).status,409);
+  assert.equal((await ok('support',undefined,a.cookie))[0].reply,'Проверьте выбранную неделю');
+  assert.equal((await ok('notices/unread',undefined,a.cookie)).unread,true);
+  assert.equal((await ok('notices/unread',undefined,b.cookie)).unread,false);
+  await ok('notices/read',{},a.cookie);
+  assert.equal((await ok('notices/unread',undefined,a.cookie)).unread,false);
+ });
  await t.test('trainers receive only their own section applications',async()=>{
   const club={title:'Тестовая секция А',category:'Спорт',description:'Только в тестовой базе',place:'Тест-1',weekday:2,start:'18:00',end:'19:20',capacity:1,owner:coach.body.id,enrollment_open:1,archived:0};
   const club1=await ok('manage/clubs',club,coach.cookie),club2=await ok('manage/clubs',{...club,title:'Тестовая секция Б',owner:coach2.body.id},coach2.cookie);
