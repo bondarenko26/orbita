@@ -25,4 +25,19 @@ button.danger{color:var(--red,#ff746f);border:1px solid currentColor;margin-top:
 .service-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:8px}.service-copy strong{font-size:20px}.service-copy>span{font-size:13px;line-height:1.5;color:var(--muted)}.service-arrow{font-size:25px;color:var(--muted)}
 .section-tabs{display:flex;gap:8px;padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:20px;margin-bottom:24px}.section-tabs button{flex:1;min-width:0;border:0;background:transparent;padding:12px 8px;color:var(--muted)}.section-tabs button.active{background:var(--active);color:var(--onactive)}
 .section-title{margin:26px 0 16px}.club-actions{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px}.club-actions>button{margin:0}
+.teacher-link{padding:0;border:0;background:transparent;color:var(--accent);text-align:left;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+.teacher-entry{display:grid;gap:8px;padding:18px 20px;text-align:left;overflow-wrap:anywhere}
+.teacher-entry[hidden]{display:none}
+.rating-summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.card .rating-summary{margin-top:10px}
+.rating-stars{color:var(--orange);letter-spacing:1px;font-size:19px}
+.review-comment{white-space:pre-wrap;overflow-wrap:anywhere}
+.review-actions{display:flex;gap:16px;flex-wrap:wrap}
+.star-picker{display:flex;flex-wrap:wrap;border:0;padding:0;margin:16px 0}
+.star-picker legend{color:var(--muted);font-size:14px;margin-bottom:8px}
+.star-picker label{position:relative;cursor:pointer;margin:0}
+.star-picker input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.star-picker span{display:grid;place-items:center;width:44px;height:44px;font-size:30px;border-radius:8px;color:var(--muted)}
+.star-picker label:has(:checked) span,.star-picker label:has(~ label :checked) span{color:var(--orange)}
+.star-picker label:has(:focus-visible) span{outline:2px solid var(--accent)}
 @media(max-width:720px){.services-grid{grid-template-columns:1fr}.service-card{padding:20px;gap:14px}.mobile-nav button{font-size:11px}.section-tabs-three{gap:3px}.section-tabs-three button{font-size:12px;padding:12px 4px}.section-tabs-three button:first-child{flex:1.25}}

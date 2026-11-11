@@ -1,5 +1,6 @@
 import {installMail} from './mail.mjs';
 import {installDeletion} from './deletion.mjs';
+import {installTeacherReviews} from './teacher-reviews.mjs';
 import {normalizeEmail,temporaryPassword} from './credentials.mjs';
 import {liveSql} from './deletion.mjs';
 import {migrateCredentials,installCredentials} from './credentials.mjs';
@@ -49,6 +50,7 @@ const credentials=installCredentials(db,{fail,hash,verify});
 const mail=installMail(db,{dir,fail,credentials,hashPassword:hash,scope:(u,rows)=>management.academic.filter('users',rows,u)});
 const management=installManagement(db,{hash,fail,required,allowed,date,time,mail});
 const deletion=installDeletion(db,{fail,academic:management.academic});
+const teacherReviews=installTeacherReviews(db,fail);
 const accounts=installAccounts(db,{fail,management,tokenHash,mail});
 async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
@@ -101,6 +103,7 @@ async function handler(req,res){
  }
  if(p==='/api/leave'&&req.method==='POST'){run('DELETE FROM memberships WHERE user_id=? AND club_id=?',u.id,Number(b.club_id));send({ok:true});return;}
  if(mail.handle(p,req.method,b,u,send,res))return;
+ if(teacherReviews(p,req.method,b,u,send))return;
  if(deletion.handle(p,req.method,b,u,send))return;
  if(await accounts.handle(p,req.method,b,u,send,res,url,tokenHash(cookie)))return;
  if(await management.academic.handle(p,req.method,b,u,send,url,management.calendar))return;
