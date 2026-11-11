@@ -40,6 +40,78 @@ button.danger{color:var(--red,#ff746f);border:1px solid currentColor;margin-top:
 .mobile-nav .icon{height:26px;line-height:26px}
 .profile-actions .ui-icon{margin-inline-end:6px}
 .support-ticket{overflow-wrap:anywhere}
+[data-campus-guide]{max-width:1020px}
+.campus-entry,.campus-row{display:flex;align-items:center;width:100%;height:100%;text-align:left;gap:16px;min-width:0}
+.campus-entry{margin:22px 0 28px;padding:22px 24px;background:var(--panel);border-radius:23px}
+.campus-pin,.campus-code{display:grid;place-items:center;flex:none;border-radius:15px}
+.campus-pin{width:50px;height:50px;color:var(--onactive);background:var(--accent)}
+.campus-pin .ui-icon{width:26px;height:26px}
+.campus-code{width:72px;min-height:44px;background:color-mix(in srgb,var(--blue) 15%,var(--panel));color:var(--blue);font-weight:700;font-size:14px}
+.campus-entry-action{flex:none;color:var(--accent);font-weight:650}
+.campus-row-copy{display:grid;gap:5px;min-width:0;flex:1}
+.campus-row-copy strong{font-size:17px;line-height:1.3}
+.campus-row-copy>span{font-size:14px;line-height:1.5;color:var(--muted)}
+.campus-entry .campus-row-copy strong{font-size:20px}
+.campus-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:12px}
+.campus-row{padding:16px 18px;border-radius:20px}
+.campus-chevron{flex:none;color:var(--muted);font-size:22px}
+
+.campus-map-dialog{width:min(940px,calc(100% - 32px));max-width:none;max-height:calc(100dvh - 32px);padding:22px;margin:auto;overscroll-behavior:contain}
+.campus-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px}
+.campus-dialog-head h2{font-size:26px}
+.campus-dialog-head p,.campus-details p{color:var(--muted);font-size:14px;line-height:1.5}
+.campus-dialog-head p{margin-top:3px}
+.campus-dialog-head button{display:grid;place-items:center;min-width:44px;min-height:44px;padding:0;font-size:25px;line-height:1}
+.campus-map-layout{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(205px,1fr);align-items:start;gap:20px}
+.campus-board{min-width:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--bg)}
+.campus-viewport{width:100%;aspect-ratio:500 / 444;contain:size;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;user-select:none;background-color:color-mix(in srgb,var(--blue) 5%,var(--bg));background-image:radial-gradient(color-mix(in srgb,var(--muted) 25%,transparent) .8px,transparent .9px);background-size:13px 13px}
+.campus-viewport:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.campus-viewport[data-zoomed=true]{cursor:grab}
+.campus-viewport[data-zoomed=true]:active{cursor:grabbing}
+.campus-drawing{display:block;width:100%;height:auto;max-width:none;-webkit-tap-highlight-color:transparent}
+.plan-plinth{fill:color-mix(in srgb,var(--green) 9%,var(--panel));stroke:color-mix(in srgb,var(--green) 21%,var(--panel));stroke-width:1.2}
+.plan-building,.plan-callout{cursor:pointer}
+.plan-building,.plan-context{--roof:color-mix(in srgb,var(--blue) 42%,var(--panel));--wall:color-mix(in srgb,var(--blue) 21%,var(--panel));--edge:color-mix(in srgb,var(--blue) 63%,var(--panel))}
+.plan-context{--roof:color-mix(in srgb,var(--muted) 30%,var(--panel));--wall:color-mix(in srgb,var(--muted) 15%,var(--panel));--edge:color-mix(in srgb,var(--muted) 45%,var(--panel))}
+.plan-building[data-map-place=admin],.plan-building[data-map-place=library]{--roof:color-mix(in srgb,var(--green) 44%,var(--panel));--wall:color-mix(in srgb,var(--green) 20%,var(--panel));--edge:color-mix(in srgb,var(--green) 62%,var(--panel))}
+.plan-building[data-map-place=canteen]{--roof:color-mix(in srgb,var(--orange) 43%,var(--panel));--wall:color-mix(in srgb,var(--orange) 20%,var(--panel));--edge:color-mix(in srgb,var(--orange) 58%,var(--panel))}
+.plan-building.is-selected,.plan-building:focus-visible{--roof:var(--accent);--wall:color-mix(in srgb,var(--accent) 58%,var(--panel));--edge:var(--ink)}
+.plan-roof,.plan-wall,.plan-glass{stroke:var(--edge);stroke-width:1;stroke-linejoin:round}
+.plan-roof{fill:var(--roof)}.plan-wall{fill:var(--wall)}.plan-wall.side{fill:color-mix(in srgb,var(--wall) 70%,var(--bg))}
+.plan-glass{fill:color-mix(in srgb,var(--roof) 65%,var(--ink))}
+.plan-window,.plan-mullion{fill:none;stroke:var(--edge);stroke-width:.85}
+.plan-building:hover .plan-roof{stroke:var(--ink)}
+.plan-building:focus-visible{outline:2px dashed var(--accent);outline-offset:3px}
+.plan-leader{fill:none;stroke:var(--muted);stroke-width:1.3;pointer-events:none}
+.plan-dot{fill:var(--ink)}
+.plan-chip{fill:var(--panel);stroke:color-mix(in srgb,var(--muted) 66%,var(--panel));stroke-width:1.2}
+.plan-callout text{fill:var(--ink);font-size:18px;font-weight:650}
+.plan-callout.is-selected .plan-chip,.plan-callout:hover .plan-chip{fill:var(--active);stroke:var(--active)}
+.plan-callout.is-selected text,.plan-callout:hover text{fill:var(--onactive)}
+.plan-hit{fill:transparent}
+.campus-controls{display:flex;align-items:center;gap:5px;padding:5px 7px;border-top:1px solid var(--line);background:var(--panel)}
+.campus-controls button{width:44px;padding:0;font-size:22px;border-radius:11px}
+.campus-controls button:disabled{cursor:default}
+.campus-controls output{min-width:44px;text-align:center;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.campus-controls [data-zoom=fit]{margin-left:auto;width:auto;padding:0 12px;font-size:14px}
+.campus-details label{margin:0}
+.campus-details select{font-size:15px}
+.campus-details [data-map-details]{margin-top:16px}
+.campus-details h3{font-size:18px}
+.campus-details p{margin:5px 0}
+.campus-details a{display:inline-flex;align-items:center;min-height:44px}
+@media(max-width:720px){
+ .campus-entry,.campus-row{gap:11px;padding:16px}
+ .campus-entry .campus-row-copy strong{font-size:16px}
+ .campus-row-copy strong{font-size:15px}
+ .campus-entry-action,.campus-row-copy>span{font-size:13px}
+ .campus-code{width:54px;font-size:12px;border-radius:12px}
+ .campus-pin{width:44px;height:44px}
+ .campus-map-dialog{width:calc(100% - 16px);max-height:calc(100dvh - 16px);padding:14px;border-radius:19px}
+ .campus-map-layout{grid-template-columns:minmax(0,1fr);gap:15px}
+ .campus-dialog-head h2{font-size:22px}
+ .campus-details [data-map-details]{margin-top:10px}
+}
 .star-picker{display:flex;flex-wrap:wrap;border:0;padding:0;margin:16px 0}
 .star-picker legend{color:var(--muted);font-size:14px;margin-bottom:8px}
 .star-picker label{position:relative;cursor:pointer;margin:0}

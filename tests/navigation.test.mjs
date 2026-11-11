@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {campusDirectory} from '../public/campus-ui.js';
 
 test('four main sections, nested navigation, personal results and role workspaces',async()=>{
  const listeners={},nodes=new Map(),requests=[];let role='student';
@@ -15,15 +16,22 @@ test('four main sections, nested navigation, personal results and role workspace
   if(endpoint==='me')result=me();else if(endpoint.startsWith('schedule?'))result={lessons:[],clubs:[],week:null};else if(endpoint==='manage')result={};else if(endpoint==='join'){const id=JSON.parse(options.body).club_id;data.clubs.find(c=>c.id===id).membership='На рассмотрении';result={ok:true}}else if(endpoint==='leave'){const id=JSON.parse(options.body).club_id;data.clubs.find(c=>c.id===id).membership=null;result={ok:true}}else result=data[endpoint];
   assert.notEqual(result,undefined,endpoint);return {ok:true,status:200,json:async()=>result};
  }};
+ Object.assign(context,{campusDirectory,bindCampusDirectory(){}});
  const source=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'');
  const state=await vm.runInNewContext('(async()=>{'+source+'\nreturn {async account(value){user=value;page="schedule";await render()}}})()',context);
  const click=async dataset=>{const button={dataset,disabled:false};for(const fn of listeners.click||[])await fn({target:{closest:()=>button}})};
  const content=()=>node('#content').innerHTML;
  function mainNav(expected){const markup=node('#app').innerHTML,nav=markup.match(/<nav class="mobile-nav"[\s\S]*?<\/nav>/)[0];assert.equal((nav.match(/<button/g)||[]).length,4);for(const title of ['Расписание','Оценки','Разное','Профиль'])assert.ok(nav.includes(title));assert.match(nav,new RegExp('data-page="'+expected+'" class="active" aria-current="page"'))}
  mainNav('schedule');
+ assert.match(node('#app').innerHTML,/href="#icon-grades"/);
  await click({page:'grades'});mainNav('grades');assert.match(content(),/Математика/);assert.match(content(),/5.00/);
  await click({gradeTab:'Посещаемость'});assert.match(content(),/Присутствовал/);assert.match(content(),/Пропусков: 0/);
  await click({page:'extras'});mainNav('extras');assert.match(content(),/Справки/);assert.match(content(),/Секции/);
+ assert.match(content(),/data-page="campus"/);
+ await click({page:'campus'});mainNav('extras');assert.match(content(),/Главный кампус НИУ МГСУ/);
+ for(const code of ['kmk','kpa','sok','admin','ulk','ulb','library'])assert.ok(content().includes('data-open-map="'+code+'"'));
+ assert.match(content(),/data-map-place="canteen"/);assert.doesNotMatch(content(),/data-map-place="sok"/);
+ await click({page:'extras'});mainNav('extras');
  await click({page:'requests'});mainNav('extras');assert.match(content(),/← Разное/);assert.match(content(),/Справка об обучении/);assert.match(content(),/Принята/);
  await click({page:'clubs'});mainNav('extras');assert.match(content(),/Принятая секция/);assert.match(content(),/Мои заявки/);assert.match(content(),/Ожидающая секция/);assert.doesNotMatch(content(),/Свободный кружок/);
  await click({clubtab:'Сборные'});assert.match(content(),/Команда университета/);assert.match(content(),/Кубок университета/);
