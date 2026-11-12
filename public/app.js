@@ -39,7 +39,7 @@ async function refreshBell(){
 setInterval(refreshBell,15000);
 window.addEventListener('focus',refreshBell);
 document.addEventListener('visibilitychange',refreshBell);
-function activeSection(){return ({campus:'extras',support:'profile',supportInbox:'profile',teachers:'extras',teacherCard:teacherOrigin==='schedule'?'schedule':'extras',requests:'extras',clubs:'extras',teaching:'grades',manage:'profile',trash:'profile',mailStatus:'profile',notices:'profile'})[page]||page}
+function activeSection(){return ({contacts:'extras',campus:'extras',support:'profile',supportInbox:'profile',teachers:'extras',teacherCard:teacherOrigin==='schedule'?'schedule':'extras',requests:'extras',clubs:'extras',teaching:'grades',manage:'profile',trash:'profile',mailStatus:'profile',notices:'profile'})[page]||page}
 function shell(){document.body.dataset.theme=user.theme;app.innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand"><i class="logo"></i> ОРБИТА</div><div><div class="side-label">ЛИЧНЫЙ КАБИНЕТ</div><nav class="nav">${navigation().map(navButton).join('')}${['admin','staff','manager'].includes(user.role)?navButton(['manage',uiIcon('manage'),'Управление']):''}</nav></div><footer>Цифровой деканат будущего<br>Конкурсный концепт · 2026<br>Все данные вымышлены</footer></aside><main class="main"><header class="top"><span class="eyebrow">Кампус / ${esc(user.grp||'Сотрудник')}</span><div class="top-actions">${bellButton()}<button data-page="profile" class="avatar" aria-label="Профиль">${uiIcon('profile')}</button></div></header><div id="content" aria-live="polite"><p class="loading">Загружаем…</p></div><p class="banner">Конкурсный прототип · Все данные вымышлены</p></main><nav class="mobile-nav" aria-label="Основные разделы">${navigation().map(navButton).join('')}</nav></div>`}
 function navButton([id,icon,label]){const active=page===id||(id!=='manage'&&activeSection()===id);return `<button data-page="${id}" class="${active?'active':''}" ${active?'aria-current="page"':''}><span class="icon" aria-hidden="true">${icon}</span>${label}</button>`}
 const heading=(title,sub,extra='')=>`<div class="heading"><div><h1>${title}</h1><p>${sub}</p></div>${extra}</div>`;
@@ -49,7 +49,7 @@ async function render(){
  if(user.must_change_password)return forcePassword();
  const v=++version;shell();if(page!=='notices')refreshBell();
  try{
-  const view=({schedule,grades,extras,campus,support,supportInbox,teachers,teacherCard,requests,clubs,profile,notices,manage,teaching,trash,mailStatus})[page]||schedule;
+  const view=({schedule,grades,extras,contacts,campus,support,supportInbox,teachers,teacherCard,requests,clubs,profile,notices,manage,teaching,trash,mailStatus})[page]||schedule;
   const html=await view(),content=$('#content');
   if(v!==version||!content)return;
   content.innerHTML=html;
@@ -164,16 +164,36 @@ function reviewDialog(button){
  <p class="muted">Отзыв публикуется анонимно. Чтобы сохранить анонимность, опустите имя и группу.</p>`,
  values=>api(endpoint+'/my-review',{rating:Number(values.rating),comment:values.comment}),selected?'Сохранить':'Опубликовать');
 }
-function serviceCard(target,icon,title,description){return `<button class="service-card" data-page="${target}"><span class="service-icon" aria-hidden="true">${icon}</span><span class="service-copy"><strong>${title}</strong><span>${description}</span></span><span class="service-arrow" aria-hidden="true">›</span></button>`}
+function serviceCard(target,icon,title,description){return `<button class="service-card" data-page="${target}"><span class="service-icon" aria-hidden="true">${uiIcon(icon)}</span><span class="service-copy"><strong>${title}</strong><span>${description}</span></span></button>`}
 function campus(){return backToExtras()+campusDirectory(uiIcon('campus'))}
 async function extras(){
  const staff=['admin','staff'].includes(user.role);
- return heading('Разное','Сервисы и жизнь университета')+'<div class="services-grid">'+
- (user.role==='student'||staff?serviceCard('requests',uiIcon('documents'),'Справки',staff?'Заявки студентов, ответы и готовые документы':'Заказать документ, отправить заявление и проверить статус'):'')+
- serviceCard('teachers','☆','Преподаватели','Найти преподавателя, посмотреть рейтинг и отзывы')+
- serviceCard('clubs',uiIcon('clubs'),'Секции','Мои занятия, сборные университета и кружки')+
- serviceCard('campus',uiIcon('campus'),'Карта МГСУ','Схема кампуса и обозначения корпусов в расписании')+
- (user.role==='manager'?serviceCard('requests',uiIcon('clubs'),'Записи в секции','Заявки студентов на ваши занятия'):'')+'</div>';
+ const study=[
+  user.role==='student'||staff?serviceCard('requests','documents','Справки',staff?'Заявки и готовые документы':'Заказ и статус заявки'):'',
+  serviceCard('campus','campus','Карта МГСУ','Корпуса и схема кампуса'),
+  serviceCard('teachers','teachers','Преподаватели','Рейтинги и отзывы'),
+  serviceCard('clubs','clubs','Секции','Занятия, кружки и сборные'),
+  serviceCard('contacts','contacts','Контакты','Телефоны и почта администрации'),
+ ].join('');
+ const coach=user.role==='manager'?'<h2 class="services-label">Управление секциями</h2><div class="services-grid">'+serviceCard('requests','clubs','Записи в секции','Заявки на ваши занятия')+'</div>':'';
+ return '<h1>Разное</h1><h2 class="services-label">Учёба</h2><div class="services-grid">'+study+'</div>'+coach;
+}
+const admissionsSource='https://mgsu.ru/postupayushchim/Kontakty/';
+const universityContacts=[
+ {name:'Канцелярия',purpose:'Письменные обращения и корреспонденция',phone:'+7 (495) 781-80-07',email:'kanz@mgsu.ru',source:'https://os.mgsu.ru/contacts/Priem_korrespond/'},
+ {name:'Объединённая дирекция общежитий',purpose:'Вопросы заселения и проживания',phone:'+7 (499) 929-50-16',email:'odo@mgsu.ru',source:'https://mgsu.ru/student/Obshegitiya/kontakti.php'},
+ {name:'Приёмная комиссия',purpose:'Приём граждан России',phone:'+7 (495) 781-99-88',ext:'5',email:'priemkom@mgsu.ru',source:admissionsSource},
+ {name:'Приём иностранных граждан',purpose:'Вопросы поступления из-за рубежа',phone:'+7 (499) 929-50-12',email:'international@mgsu.ru',source:admissionsSource},
+];
+function contacts(){
+ const cards=universityContacts.map(c=>{
+  const dial=c.phone.replace(/[^+\d]/g,'')+(c.ext?';ext='+c.ext:'');
+  return `<article class="card department-contact"><h2>${c.name}</h2><p>${c.purpose}</p>
+   <a href="tel:${dial}">${c.phone}${c.ext?' доб. '+c.ext:''}</a>
+   <a href="mailto:${c.email}">${c.email}</a>
+   <a class="contact-source" href="${c.source}" target="_blank" rel="noopener noreferrer">На сайте МГСУ ↗</a></article>`;
+ }).join('');
+ return backToExtras()+heading('Контакты','Телефоны и электронная почта подразделений МГСУ')+'<div class="grid">'+cards+'</div>';
 }
 async function requests(){if(['staff','admin','manager'].includes(user.role))return backToExtras()+staffRequestsView(await api('inbox'),user);if(user.role!=='student')return backToExtras()+heading('Справки','Документы и заявления')+empty('Раздел для студентов','Студенческие справки заказываются из аккаунта студента.');const rs=await api('requests');return backToExtras()+heading('Справки','Деканат рядом. Без очередей и потерянных сообщений.')+`<button class="primary" data-action="request">＋ Новая заявка</button><div class="list manage-section">${rs.map(r=>`<article class="card"><div class="row"><span class="badge">${esc(r.status)}</span><small>№ ${r.id}</small></div><h3>${esc(r.type)}</h3><p>${esc(r.comment||'Без дополнительного комментария')}</p>${r.has_document?`<p><a class="download" href="/api/requests/${r.id}/document">Скачать справку ↓</a></p>`:''}${r.reply?`<p class="request-detail">Ответ деканата: ${esc(r.reply)}</p>`:''}<small>${esc(r.created)}</small><p>Принята → В работе → Готова</p></article>`).join('')||empty('Здесь будут твои заявки','Закажи справку или отправь обращение — статус появится здесь.')}</div>`}
 async function clubs(){
