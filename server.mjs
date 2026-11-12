@@ -2,6 +2,8 @@ import {installMail} from './mail.mjs';
 import {installDeletion} from './deletion.mjs';
 import {installTeacherReviews} from './teacher-reviews.mjs';
 import {installSupport} from './support.mjs';
+import {installDating} from './dating.mjs';
+import {startDatingWorker} from './dating-moderation.mjs';
 import {normalizeEmail,temporaryPassword} from './credentials.mjs';
 import {liveSql} from './deletion.mjs';
 import {migrateCredentials,installCredentials} from './credentials.mjs';
@@ -53,6 +55,8 @@ const management=installManagement(db,{hash,fail,required,allowed,date,time,mail
 const deletion=installDeletion(db,{fail,academic:management.academic});
 const teacherReviews=installTeacherReviews(db,fail);
 const support=installSupport(db,{required,fail});
+const dating=installDating(db,fail);
+const datingWorker=startDatingWorker(dating.queue);
 const accounts=installAccounts(db,{fail,management,tokenHash,mail});
 const noticeAudience=`n.user_id=? OR (n.user_id IS NULL AND (
   coalesce(n.institute_id,'')='' OR ?='admin' OR n.institute_id=? OR
@@ -63,11 +67,13 @@ async function handler(req,res){
  const url=new URL(req.url,process.env.PUBLIC_ORIGIN||('http://'+req.headers.host));const p=url.pathname;
  const send=(data,status=200)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))};
  try{
- if(!p.startsWith('/api/')){const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/management-ui.js':'management-ui.js','/teaching-ui.js':'teaching-ui.js','/accounts-ui.js':'accounts-ui.js','/campus-ui.js':'campus-ui.js'};if(!files[p])fail(404,'Не найдено');res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript; charset=utf-8':p.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(path.join(root,'public',files[p])));return;}
+ if(!p.startsWith('/api/')){const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/dating-ui.js':'dating-ui.js','/management-ui.js':'management-ui.js','/teaching-ui.js':'teaching-ui.js','/accounts-ui.js':'accounts-ui.js','/campus-ui.js':'campus-ui.js'};if(!files[p])fail(404,'Не найдено');res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript; charset=utf-8':p.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(path.join(root,'public',files[p])));return;}
  const cookie=req.headers.cookie?.match(/(?:^|; )orbita=([a-f0-9]{64})(?:;|$)/)?.[1];
  let u=cookie?one('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE u.active=1 AND s.token=? AND s.expires>?',tokenHash(cookie),Date.now()):null;
  if(['/api/accounts/preview','/api/accounts/export'].includes(p)&&(!u||!['admin','staff'].includes(u.role)||u.must_change_password))fail(u?403:401,'Недостаточно прав');
- let b={};if(!['GET','HEAD'].includes(req.method)){const origin=req.headers.origin;if(origin&&origin!==(process.env.PUBLIC_ORIGIN||`http://${req.headers.host}`))fail(403,'Источник запроса не разрешён');if(!req.headers['content-type']?.startsWith('application/json'))fail(415,'Ожидается JSON');const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>(p==='/api/accounts/preview'?1500000:p==='/api/accounts/export'?128000:16000))fail(413,'Слишком большой запрос');chunks.push(chunk)}try{b=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}')}catch{fail(400,'Некорректный JSON')}if(!b||typeof b!=='object'||Array.isArray(b))fail(400,'Ожидается объект JSON')}
+ const uploading=p==='/api/dating/profile'&&req.method==='POST';
+ if(uploading){if(!u||u.must_change_password)fail(u?403:401,'Сначала войдите в студенческий аккаунт.');dating.requireConsent(u)}
+ let b={};if(!['GET','HEAD'].includes(req.method)){const origin=req.headers.origin;if(origin&&origin!==(process.env.PUBLIC_ORIGIN||`http://${req.headers.host}`))fail(403,'Источник запроса не разрешён');if(!req.headers['content-type']?.startsWith('application/json'))fail(415,'Ожидается JSON');const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>(p==='/api/accounts/preview'?1500000:p==='/api/accounts/export'?128000:uploading?810000:16000))fail(413,'Слишком большой запрос');chunks.push(chunk)}try{b=JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}')}catch{fail(400,'Некорректный JSON')}if(!b||typeof b!=='object'||Array.isArray(b))fail(400,'Ожидается объект JSON')}
  
  u=cookie?one('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE u.active=1 AND s.token=? AND s.expires>?',tokenHash(cookie),Date.now()):null;
  if(p==='/api/login'&&req.method==='POST'){
@@ -122,6 +128,7 @@ async function handler(req,res){
  if(mail.handle(p,req.method,b,u,send,res))return;
  if(teacherReviews(p,req.method,b,u,send))return;
  if(support(p,req.method,b,u,send))return;
+ if(dating.handle(p,req.method,b,u,send,res,datingWorker.wake))return;
  if(deletion.handle(p,req.method,b,u,send))return;
  if(await accounts.handle(p,req.method,b,u,send,res,url,tokenHash(cookie)))return;
  if(await management.academic.handle(p,req.method,b,u,send,url,management.calendar))return;
@@ -130,4 +137,5 @@ async function handler(req,res){
  }catch(e){const constraint=/UNIQUE constraint|FOREIGN KEY constraint|NOT NULL constraint/.test(e.message);send({error:e.status?e.message:constraint?'Запись уже существует или связана с другими данными':'Ошибка сервера'},e.status||(constraint?409:500));if(!e.status&&!constraint)console.error(e)}
 }
 export const server=http.createServer(handler);
+server.on('close',datingWorker.stop);
 server.listen(Number(process.env.PORT||3000),process.env.HOST||'127.0.0.1',()=>console.log(`Орбита: http://${process.env.HOST||'127.0.0.1'}:${server.address().port}`));

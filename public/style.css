@@ -28,6 +28,50 @@ button.danger{color:var(--red,#ff746f);border:1px solid currentColor;margin-top:
 .service-card[data-page=teachers] .service-icon{background:#7651be}
 .service-card[data-page=clubs] .service-icon{background:#af6416}
 .service-card[data-page=contacts] .service-icon{background:#277a70}
+.service-card[data-page=dating] .service-icon,.service-card[data-page=datingAdmin] .service-icon{background:#b03961}
+.dating-wrap{max-width:620px}
+.dating-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.dating-heading h1{margin:0}
+.dating-wrap button:focus-visible,.dating-wrap summary:focus-visible,.dating-wrap a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dating-tabs{display:flex;gap:4px;border:1px solid var(--line);background:var(--panel);padding:4px;border-radius:17px;margin-bottom:16px}
+.dating-tabs button{flex:1;min-width:0;border:0;border-radius:13px;background:transparent;color:var(--muted);padding:11px 4px;font-size:14px;line-height:1.25}
+.dating-tabs button[aria-pressed=true]{background:var(--active);color:var(--onactive)}
+.dating-blank,.dating-card{background:var(--panel);border:1px solid var(--line);border-radius:24px;overflow:hidden}
+.dating-blank{padding:clamp(20px,5vw,38px)}
+.dating-blank p,.dating-rules li span,.dating-rules>p,.dating-hint,.dating-form small{color:var(--muted);line-height:1.5}
+.dating-mark{display:inline-grid;place-items:center;width:46px;height:46px;border-radius:15px;background:#ac3b60;color:white;margin-bottom:14px}
+.dating-blank h2,.dating-rules h2,.dating-form h2,.dating-card-body h2,.dating-own h2{margin:0 0 9px}
+.dating-blank button{margin:7px 8px 0 0}
+.dating-rules ul{list-style:none;padding:0;margin:16px 0}
+.dating-rules li{padding:12px 0;border-top:1px solid var(--line);display:grid;gap:3px}
+.dating-agree{display:flex;align-items:center;gap:12px;line-height:1.4;margin:18px 0}
+.dating-agree input{margin:0;width:20px;height:20px;flex:none;accent-color:var(--accent)}
+.dating-rules form .primary{width:100%}
+.dating-photo{display:block;width:100%;height:clamp(240px,42vh,400px);object-fit:contain;background:var(--bg)}
+.dating-card-body{padding:clamp(16px,4vw,25px);min-width:0}
+.dating-card h2,.dating-own h2,.dating-case h2,.dating-about,.dating-case p{overflow-wrap:anywhere}
+.dating-about{white-space:pre-line;line-height:1.5;margin:15px 0 20px}
+.dating-tags,.dating-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.dating-tags span{max-width:100%;overflow-wrap:anywhere;background:var(--card);border:1px solid var(--line);border-radius:20px;font-size:13px;padding:4px 10px}
+.dating-actions button,.dating-blank button,.dating-contact{min-height:44px}
+.dating-hint{font-size:13px;margin:12px 0}
+.dating-contact{display:inline-flex;align-items:center;max-width:100%;overflow-wrap:anywhere;border-radius:14px;padding:8px 14px;background:var(--active);color:var(--onactive);text-decoration:none;font-weight:650}
+.dating-safety{margin:12px 0 0}.dating-safety summary{font-size:14px}.dating-safety .dating-actions{margin-top:4px}
+.dating-invite,.dating-case{margin-bottom:14px}
+.dating-invite>img{width:100%;height:165px;object-fit:contain;background:var(--bg)}
+.dating-pair{display:grid;grid-template-columns:minmax(0,2fr) minmax(72px,1fr);gap:12px}
+.dating-preview{display:block;width:100%;max-height:220px;object-fit:contain;background:var(--bg);border-radius:13px;margin:12px 0}
+.dating-preview[hidden]{display:none}
+.dating-form input[type=file]{max-width:100%;font-size:14px}
+.dating-form small{font-weight:400}.dating-form textarea,.dating-dialog textarea{min-height:85px}
+.dating-form .dating-actions,.dating-own .dating-actions{margin-top:18px}
+.dating-status{color:var(--accent);font-weight:650;margin:0 0 14px}
+.dating-blocked{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;overflow-wrap:anywhere}
+.dating-danger{color:var(--ink)}
+.dating-dialog{max-width:min(420px,calc(100vw - 28px));overflow-wrap:anywhere}
+.dating-dialog .dating-actions{margin-top:16px}.dating-dialog h2{margin-top:0}
+@media(max-width:440px){.dating-tabs button{font-size:13px}.dating-heading h1{font-size:32px}.dating-card-body{padding:15px}.dating-actions button{padding:11px 12px}}
+@media(max-width:600px){.main:has([data-dating]) .top{margin-bottom:10px}#content:has([data-dating])>.back-link{margin-bottom:6px}.dating-heading,.dating-tabs{margin-bottom:10px}.dating-photo{height:auto;aspect-ratio:1.55;max-height:clamp(150px,27svh,240px)}.dating-card-body .dating-about{margin:10px 0 12px}}
 .service-copy{display:grid;gap:5px;min-width:0}.service-copy strong{font-size:19px}.service-copy>span{font-size:14px;line-height:1.4;color:var(--muted)}
 .department-contact h2{font-size:19px}.department-contact a{display:flex;align-items:center;width:fit-content;max-width:100%;min-height:44px;color:var(--accent);overflow-wrap:anywhere}.department-contact .contact-source{font-size:13px;color:var(--muted)}
 .section-tabs{display:flex;gap:8px;padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:20px;margin-bottom:24px}.section-tabs button{flex:1;min-width:0;border:0;background:transparent;padding:12px 8px;color:var(--muted)}.section-tabs button.active{background:var(--active);color:var(--onactive)}

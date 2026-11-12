@@ -1,5 +1,6 @@
 import {clearCredentials} from './accounts-ui.js';
 import {campusDirectory,bindCampusDirectory} from './campus-ui.js';
+import {bindDating} from './dating-ui.js';
 import {teachingView} from './teaching-ui.js';
 import { managementView, staffRequestsView, syncInbox } from './management-ui.js';
 const $=s=>document.querySelector(s),app=$('#app');
@@ -39,8 +40,8 @@ async function refreshBell(){
 setInterval(refreshBell,15000);
 window.addEventListener('focus',refreshBell);
 document.addEventListener('visibilitychange',refreshBell);
-function activeSection(){return ({contacts:'extras',campus:'extras',support:'profile',supportInbox:'profile',teachers:'extras',teacherCard:teacherOrigin==='schedule'?'schedule':'extras',requests:'extras',clubs:'extras',teaching:'grades',manage:'profile',trash:'profile',mailStatus:'profile',notices:'profile'})[page]||page}
-function shell(){document.body.dataset.theme=user.theme;app.innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand"><i class="logo"></i> ОРБИТА</div><div><div class="side-label">ЛИЧНЫЙ КАБИНЕТ</div><nav class="nav">${navigation().map(navButton).join('')}${['admin','staff','manager'].includes(user.role)?navButton(['manage',uiIcon('manage'),'Управление']):''}</nav></div><footer>Цифровой деканат будущего<br>Конкурсный концепт · 2026<br>Все данные вымышлены</footer></aside><main class="main"><header class="top"><span class="eyebrow">Кампус / ${esc(user.grp||'Сотрудник')}</span><div class="top-actions">${bellButton()}<button data-page="profile" class="avatar" aria-label="Профиль">${uiIcon('profile')}</button></div></header><div id="content" aria-live="polite"><p class="loading">Загружаем…</p></div><p class="banner">Конкурсный прототип · Все данные вымышлены</p></main><nav class="mobile-nav" aria-label="Основные разделы">${navigation().map(navButton).join('')}</nav></div>`}
+function activeSection(){return ({dating:'extras',datingAdmin:'extras',contacts:'extras',campus:'extras',support:'profile',supportInbox:'profile',teachers:'extras',teacherCard:teacherOrigin==='schedule'?'schedule':'extras',requests:'extras',clubs:'extras',teaching:'grades',manage:'profile',trash:'profile',mailStatus:'profile',notices:'profile'})[page]||page}
+function shell(){document.body.dataset.theme=user.theme;app.innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand"><i class="logo"></i> ОРБИТА</div><div><div class="side-label">ЛИЧНЫЙ КАБИНЕТ</div><nav class="nav">${navigation().map(navButton).join('')}${['admin','staff','manager'].includes(user.role)?navButton(['manage',uiIcon('manage'),'Управление']):''}</nav></div><footer>Цифровой деканат будущего<br>Конкурсный концепт · 2026<br>Все данные вымышлены</footer></aside><main class="main"><header class="top"><span class="eyebrow">Кампус / ${esc(user.grp||(user.role==='student'?'Студент':'Сотрудник'))}</span><div class="top-actions">${bellButton()}<button data-page="profile" class="avatar" aria-label="Профиль">${uiIcon('profile')}</button></div></header><div id="content" aria-live="polite"><p class="loading">Загружаем…</p></div><p class="banner">Конкурсный прототип · Все данные вымышлены</p></main><nav class="mobile-nav" aria-label="Основные разделы">${navigation().map(navButton).join('')}</nav></div>`}
 function navButton([id,icon,label]){const active=page===id||(id!=='manage'&&activeSection()===id);return `<button data-page="${id}" class="${active?'active':''}" ${active?'aria-current="page"':''}><span class="icon" aria-hidden="true">${icon}</span>${label}</button>`}
 const heading=(title,sub,extra='')=>`<div class="heading"><div><h1>${title}</h1><p>${sub}</p></div>${extra}</div>`;
 const empty=(title,sub,action='')=>`<div class="empty"><div class="symbol">◌</div><h3>${title}</h3><p>${sub}</p>${action}</div>`;
@@ -49,11 +50,12 @@ async function render(){
  if(user.must_change_password)return forcePassword();
  const v=++version;shell();if(page!=='notices')refreshBell();
  try{
-  const view=({schedule,grades,extras,contacts,campus,support,supportInbox,teachers,teacherCard,requests,clubs,profile,notices,manage,teaching,trash,mailStatus})[page]||schedule;
+  const view=({schedule,grades,extras,dating,datingAdmin:dating,contacts,campus,support,supportInbox,teachers,teacherCard,requests,clubs,profile,notices,manage,teaching,trash,mailStatus})[page]||schedule;
   const html=await view(),content=$('#content');
   if(v!==version||!content)return;
   content.innerHTML=html;
   if(page==='campus')bindCampusDirectory($('[data-campus-guide]'));
+  if(page==='dating'||page==='datingAdmin')bindDating($('[data-dating]'),{admin:page==='datingAdmin',api,esc,uiIcon,toast});
  }catch(e){if(v===version&&$('#content'))$('#content').innerHTML=empty('Не удалось загрузить',esc(e.message),'<button data-action="refresh">Повторить</button>')}
 }
 async function schedule(){const {lessons,clubs,week}=await api('schedule?date='+selected);const mon=shift(selected,-((new Date(selected+'T12:00:00Z').getUTCDay()+6)%7));let list=lessons.filter(l=>mode==='Пары'?!['Экзамен','Зачёт','Консультация'].includes(l.kind):['Экзамен','Зачёт','Консультация'].includes(l.kind));if(showClubs&&mode==='Пары')list.push(...clubs.map(c=>({...c,subject:c.title,kind:'Секция',room:c.place,teacher:'Ваша секция',club:true})));list.sort((a,b)=>a.start.localeCompare(b.start));let cards='',prev=null;for(const l of list){if(prev&&prev.status!=='cancelled'&&l.status!=='cancelled'&&mins(l.start)-mins(prev.end)>=45){let n=mins(l.start)-mins(prev.end);cards+=`<div class="gap"><span>◷</span>Окно ${Math.floor(n/60)?Math.floor(n/60)+' ч ':''}${n%60?n%60+' мин':''} · время для себя</div>`}cards+=`<article class="lesson ${l.kind==='Практика'?'practice':l.kind==='Лабораторная'||l.club?'lab':''}"><div class="lesson-time"><strong>${esc(l.start)}</strong><span>${esc(l.end)}</span><small>${l.club?'СЕКЦИЯ':esc(l.kind==='Экзамен'?'СЕССИЯ':'ЗАНЯТИЕ')}</small></div><div><h3>${esc(l.subject)}</h3><div class="meta"><span class="badge">${esc(l.kind)}</span><span>${esc(l.room)}</span></div><p class="teacher">${l.teacher_id?`<button class="teacher-link" data-teacher="${l.teacher_id}">${esc(l.teacher_name||l.teacher)}</button>`:esc(l.teacher)}${l.group_name?' · '+esc(l.group_name):''}</p>${l.change?`<p class="change-notice">${esc(l.change)}</p>`:''}${l.status==='cancelled'?'<span class="badge">Отменено</span>':''}${!l.club&&user.role==='student'?`<button class="note" data-note="${l.id}" data-value="${esc(l.note||'')}">${l.note?'✎ '+esc(l.note).slice(0,90):'＋ Заметка'}</button>`:''}</div></article>`;prev=l}
@@ -166,6 +168,7 @@ function reviewDialog(button){
 }
 function serviceCard(target,icon,title,description){return `<button class="service-card" data-page="${target}"><span class="service-icon" aria-hidden="true">${uiIcon(icon)}</span><span class="service-copy"><strong>${title}</strong><span>${description}</span></span></button>`}
 function campus(){return backToExtras()+campusDirectory(uiIcon('campus'))}
+function dating(){return backToExtras()+'<div data-dating><p class="loading">Загружаем…</p></div>'}
 async function extras(){
  const staff=['admin','staff'].includes(user.role);
  const study=[
@@ -176,7 +179,8 @@ async function extras(){
   serviceCard('contacts','contacts','Контакты','Телефоны и почта администрации'),
  ].join('');
  const coach=user.role==='manager'?'<h2 class="services-label">Управление секциями</h2><div class="services-grid">'+serviceCard('requests','clubs','Записи в секции','Заявки на ваши занятия')+'</div>':'';
- return '<h1>Разное</h1><h2 class="services-label">Учёба</h2><div class="services-grid">'+study+'</div>'+coach;
+ const leisure=user.role==='student'?serviceCard('dating','heart','Знакомства','Найти друзей и компанию в МГСУ · 18+'):user.role==='admin'?serviceCard('datingAdmin','heart','Модерация знакомств','Жалобы, спорные анкеты и пересмотр'):'';
+ return '<h1>Разное</h1><h2 class="services-label">Учёба</h2><div class="services-grid">'+study+'</div>'+coach+(leisure?'<h2 class="services-label">Развлечения</h2><div class="services-grid">'+leisure+'</div>':'');
 }
 const admissionsSource='https://mgsu.ru/postupayushchim/Kontakty/';
 const universityContacts=[
