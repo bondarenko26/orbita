@@ -1,5 +1,5 @@
 #!/bin/sh
-# Ubuntu 24.04 amd64. Install only inside the application's runtime directory.
+# Ubuntu amd64. Install only inside the application's runtime directory.
 set -eu
 source_dir=$(cd "$(dirname "$0")" && pwd)
 dest=${1:-/opt/orbita/runtime/dating-v1}
@@ -7,10 +7,16 @@ mkdir -p "$dest/packages" "$dest/sysroot" "$dest/model"
 dest=$(cd "$dest" && pwd)
 cd "$dest/packages"
 extra=$(LC_ALL=C apt-get -s --no-install-recommends install tesseract-ocr tesseract-ocr-eng tesseract-ocr-rus | awk '/^Inst / {print $2}')
-apt-get download tesseract-ocr tesseract-ocr-eng tesseract-ocr-rus libtesseract5 liblept5 $extra
+leptonica=$(LC_ALL=C apt-cache depends libtesseract5 | sed -n 's/.*Depends: \(libleptonica[0-9]*\).*/\1/p' | head -1)
+apt-get download tesseract-ocr tesseract-ocr-eng tesseract-ocr-rus libtesseract5 "$leptonica" $extra
 for package in ./*.deb; do dpkg-deb -x "$package" "$dest/sysroot"; done
-python3 -m venv "$dest/venv"
-"$dest/venv/bin/pip" --disable-pip-version-check install --only-binary=:all: --no-cache-dir 'pillow==12.2.0' 'numpy==2.2.6' 'onnxruntime==1.22.1' 'zxing-cpp==2.3.0' 'tokenizers==0.21.4'
+if [ -n "${UV_BIN:-}" ]; then
+    "$UV_BIN" venv --python "${PYTHON_VERSION:-3.12}" "$dest/venv"
+    "$UV_BIN" pip install --python "$dest/venv/bin/python" --only-binary=:all: 'pillow==12.2.0' 'numpy==2.2.6' 'onnxruntime==1.22.1' 'zxing-cpp==2.3.0' 'tokenizers==0.21.4'
+else
+    python3 -m venv "$dest/venv"
+    "$dest/venv/bin/pip" --disable-pip-version-check install --only-binary=:all: --no-cache-dir 'pillow==12.2.0' 'numpy==2.2.6' 'onnxruntime==1.22.1' 'zxing-cpp==2.3.0' 'tokenizers==0.21.4'
+fi
 model="$dest/model/nsfw_vit_tiny_384_int8.onnx"
 digest=20cc99a8986320972273253325975203f2a647ca0010a1ac9c869a0dbb9eb77d
 url=https://huggingface.co/kasimtmc/nsfw-image-detection-384-onnx/resolve/8a2d1b7d93d38688c6f9a38767c16acd7de4280b/nsfw_vit_tiny_384_int8.onnx
