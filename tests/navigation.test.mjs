@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {campusDirectory} from '../public/campus-ui.js';
+import {appearanceView} from '../public/appearance-ui.js';
 
 test('four main sections, nested navigation, personal results and role workspaces',async()=>{
  const listeners={},nodes=new Map(),requests=[];let role='student';
@@ -17,12 +18,19 @@ test('four main sections, nested navigation, personal results and role workspace
   assert.notEqual(result,undefined,endpoint);return {ok:true,status:200,json:async()=>result};
  }};
  Object.assign(context,{campusDirectory,bindCampusDirectory(){}});
+ Object.assign(context,{applyAppearance:()=>{},appearanceView,bindAppearance(){}});
  const source=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'');
  const state=await vm.runInNewContext('(async()=>{'+source+'\nreturn {async account(value){user=value;page="schedule";await render()}}})()',context);
  const click=async dataset=>{const button={dataset,disabled:false};for(const fn of listeners.click||[])await fn({target:{closest:()=>button}})};
  const content=()=>node('#content').innerHTML;
  function mainNav(expected){const markup=node('#app').innerHTML,nav=markup.match(/<nav class="mobile-nav"[\s\S]*?<\/nav>/)[0];assert.equal((nav.match(/<button/g)||[]).length,4);for(const title of ['Расписание','Оценки','Разное','Профиль'])assert.ok(nav.includes(title));assert.match(nav,new RegExp('data-page="'+expected+'" class="active" aria-current="page"'))}
  mainNav('schedule');
+ await click({page:'profile'});mainNav('profile');
+ assert.doesNotMatch(content(), /<form/);
+ for(const [page, expected] of [['appearance',/Предпросмотр/], ['personal',/Курс/], ['emailSettings',/обратись в деканат/], ['passwordSettings',/data-password-change/]]) {
+  await click({page});mainNav('profile');assert.match(content(), expected);assert.match(content(),/← Профиль/);
+  await click({page:'profile'});
+ }
  assert.match(node('#app').innerHTML,/href="#icon-grades"/);
  await click({page:'grades'});mainNav('grades');assert.match(content(),/Математика/);assert.match(content(),/5.00/);
  await click({gradeTab:'Посещаемость'});assert.match(content(),/Присутствовал/);assert.match(content(),/Пропусков: 0/);

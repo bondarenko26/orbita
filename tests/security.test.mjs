@@ -145,6 +145,13 @@ test('MGSU permissions and complete academic workflows',async t=>{
  });
  await t.test('theme, CSRF, account blocking and logout',async()=>{
   await ok('theme',{theme:'light'},b.cookie);assert.equal((await ok('me',undefined,b.cookie)).theme,'light');
+  await ok('theme',{theme:'violet',font:'serif',text_size:'larger',accent:'#AABBCC',id:a.id},b.cookie);
+  const saved=await ok('me',undefined,b.cookie);
+  assert.deepEqual([saved.theme,saved.font,saved.text_size,saved.accent],['violet','serif','larger','#aabbcc']);
+  assert.equal((await ok('me',undefined,a.cookie)).accent,'auto');
+  assert.equal((await req('theme',{theme:'light',accent:'invalid'},b.cookie)).status,400);
+  assert.equal((await ok('me',undefined,b.cookie)).theme,'violet');
+  await ok('theme',{theme:'dark'},b.cookie);assert.equal((await ok('me',undefined,b.cookie)).font,'serif');
   assert.equal((await fetch(url+'/api/theme',{method:'POST',headers:{cookie:b.cookie,'Content-Type':'application/json',Origin:'https://evil.example'},body:'{"theme":"dark"}'})).status,403);
   await ok('manage/users',{...profiles.get('student-c'),password:'',active:0},ac);assert.equal((await req('me',undefined,c.cookie)).status,401);
   await ok('logout',{},b.cookie);assert.equal((await req('me',undefined,b.cookie)).status,401);

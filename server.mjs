@@ -39,6 +39,10 @@ function seed(){
  console.log('Первый запуск пустой базы. admin / '+password);
 }
 migrateCredentials(db);
+const existingUserColumns = new Set(db.prepare('PRAGMA table_info(users)').all().map(column => column.name));
+for (const [column, initial] of Object.entries({font: 'system', text_size: 'normal', accent: 'auto', text_color: 'auto'})) {
+ if (!existingUserColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT NOT NULL DEFAULT '${initial}'`);
+}
 seed();
 const safeUser=u=>u.must_change_password?{id:u.id,login:u.login,name:u.name,role:u.role,theme:u.theme,must_change_password:1,temporary_password_expires:u.temporary_password_expires}:management.academic.me(u);
 const tokenHash=t=>createHash('sha256').update(t).digest('hex');
@@ -70,7 +74,7 @@ async function handler(req,res){
  const url=new URL(req.url,requestOrigin);const p=url.pathname;
  const send=(data,status=200)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))};
  try{
- if(!p.startsWith('/api/')){const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/dating-ui.js':'dating-ui.js','/management-ui.js':'management-ui.js','/teaching-ui.js':'teaching-ui.js','/accounts-ui.js':'accounts-ui.js','/campus-ui.js':'campus-ui.js'};if(!files[p])fail(404,'Не найдено');res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript; charset=utf-8':p.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(path.join(root,'public',files[p])));return;}
+ if(!p.startsWith('/api/')){const files={'/appearance-ui.js':'appearance-ui.js','/':'index.html','/app.js':'app.js','/style.css':'style.css','/dating-ui.js':'dating-ui.js','/management-ui.js':'management-ui.js','/teaching-ui.js':'teaching-ui.js','/accounts-ui.js':'accounts-ui.js','/campus-ui.js':'campus-ui.js'};if(!files[p])fail(404,'Не найдено');res.setHeader('Content-Type',p.endsWith('.js')?'text/javascript; charset=utf-8':p.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.end(readFileSync(path.join(root,'public',files[p])));return;}
  const cookie=req.headers.cookie?.match(/(?:^|; )orbita=([a-f0-9]{64})(?:;|$)/)?.[1];
  let u=cookie?one('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE u.active=1 AND s.token=? AND s.expires>?',tokenHash(cookie),Date.now()):null;
  if(['/api/accounts/preview','/api/accounts/export'].includes(p)&&(!u||!['admin','staff'].includes(u.role)||u.must_change_password))fail(u?403:401,'Недостаточно прав');
@@ -89,7 +93,18 @@ async function handler(req,res){
  if(p==='/api/password'&&req.method==='POST'){send(safeUser(credentials.change(b,u,res)));return}
  if(u.must_change_password&&p!=='/api/me')fail(403,'Сначала смените временный пароль');
  if(p==='/api/me'&&req.method==='GET'){send(safeUser(u));return}
- if(p==='/api/theme'&&req.method==='POST'){run('UPDATE users SET theme=? WHERE id=?',allowed(b.theme,['dark','light','violet']),u.id);send({ok:true});return}
+ if (p === '/api/theme' && req.method === 'POST') {
+  const theme = allowed(b.theme, ['dark', 'light', 'violet']);
+  const font = allowed(b.font === undefined ? u.font : b.font, ['system', 'sans', 'serif', 'mono']);
+  const size = allowed(b.text_size === undefined ? u.text_size : b.text_size, ['compact', 'normal', 'large', 'larger']);
+  const accent = b.accent === undefined ? u.accent : b.accent;
+  const textColor = b.text_color === undefined ? u.text_color : b.text_color;
+  for (const value of [accent, textColor]) {
+   if (typeof value !== 'string' || (value !== 'auto' && !/^#[0-9a-f]{6}$/i.test(value))) fail(400, 'Выберите цвет из палитры');
+  }
+  run('UPDATE users SET theme=?, font=?, text_size=?, accent=?, text_color=? WHERE id=?', theme, font, size, accent.toLowerCase(), textColor.toLowerCase(), u.id);
+  send({ok:true});return;
+ }
  if(p==='/api/schedule'&&req.method==='GET'){send(u.role==='teacher'?management.academic.calendar(date(url.searchParams.get('date')||''),u,management.calendar):management.calendar(date(url.searchParams.get('date')||''),u));return;}
  if(p==='/api/notes'&&req.method==='POST'){roles(u,'student');date(b.date);const l=management.calendar(b.date,u).lessons.find(l=>l.id===Number(b.lesson_id));if(!l)fail(404,'Занятие не найдено');if(typeof b.text!=='string'||b.text.length>2000)fail(400,'Максимум 2000 символов');run('INSERT INTO notes VALUES(?,?,?,?) ON CONFLICT(user_id,lesson_id,date) DO UPDATE SET text=excluded.text',u.id,l.id,b.date,b.text);send({ok:true});return}
  if(p==='/api/grades'&&req.method==='GET'){send(all('SELECT * FROM grades WHERE user_id=?',u.id));return}
