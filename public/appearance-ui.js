@@ -1,10 +1,10 @@
 const themes = {dark: 'Тёмная', light: 'Светлая', violet: 'Сумерки'};
 const fonts = {system: 'Системный', sans: 'Без засечек (Arial)', serif: 'С засечками (Georgia)', mono: 'Моноширинный'};
 const sizes = {compact: 'Компактный', normal: 'Обычный', large: 'Крупный', larger: 'Очень крупный'};
-const accents = {dark: '#98a2ff', light: '#535bd2', violet: '#d0a8ff'};
+const accents = {dark: '#83dfd1', light: '#234fa3', violet: '#ffc7ae'};
 // The lightest dark surface or darkest light surface in each theme.
-const surfaces = {dark: '#202128', light: '#f3f4f8', violet: '#29213d'};
-const textColors = {dark: '#f4f4f7', light: '#202135', violet: '#f4f4f7'};
+const surfaces = {dark: '#203040', light: '#e3edf7', violet: '#3a2e49'};
+const textColors = {dark: '#eff5f6', light: '#182c42', violet: '#fff0ee'};
 const defaults = {theme: 'dark', font: 'system', text_size: 'normal', accent: 'auto', text_color: 'auto'};
 
 function channels(hex) {
@@ -62,7 +62,12 @@ export function appearanceView(user) {
   <form class="appearance-form" data-appearance>
     <fieldset class="card appearance-fields">
       <legend class="visually-hidden">Настройки оформления</legend>
-      <div><label for="appearance-theme">Тема</label><select id="appearance-theme" name="theme">${options(themes, saved.theme)}</select></div>
+      <fieldset class="theme-choices"><legend>Тема</legend><div class="theme-samples">
+        ${Object.entries(themes).map(([id,name]) => `<label class="theme-choice">
+          <input class="visually-hidden" type="radio" name="theme" value="${id}" ${saved.theme===id?'checked':''}>
+          <span class="theme-sample" data-palette="${id}" aria-hidden="true"><span class="sample-week"><i></i><i></i><i></i><i></i><i></i></span><span class="sample-lesson"></span></span>
+          <span class="sample-name">${name}<b aria-hidden="true">✓</b></span></label>`).join('')}
+      </div></fieldset>
       <div><label for="appearance-font">Шрифт</label><select id="appearance-font" name="font">${options(fonts, saved.font)}</select></div>
       <div><label for="appearance-size">Размер текста</label><select id="appearance-size" name="text_size">${options(sizes, saved.text_size)}</select></div>
       <div class="accent-setting"><label for="appearance-accent">Акцентный цвет</label><select id="appearance-accent" name="colorMode">${options({auto:'Цвет темы',custom:'Свой цвет'},automatic?'auto':'custom')}</select>
