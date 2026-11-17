@@ -8,13 +8,14 @@ const $=s=>document.querySelector(s),app=$('#app');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Moscow',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const iso=d=>d.toISOString().slice(0,10),shift=(d,n)=>{let t=new Date(d+'T12:00:00Z');t.setUTCDate(t.getUTCDate()+n);return iso(t)},fmt=(d,opts={day:'numeric',month:'long'})=>new Date(d+'T12:00:00Z').toLocaleDateString('ru-RU',opts);
+let disposeBlocks=null;
 let unread=false,noticeRevision=0;
 let teacherId=null,teacherOrigin='teachers',teacherSearch='';
 let user=null,page='schedule',selected=today(),mode='Пары',clubTab='Мои занятия',gradeTab='Оценки',showClubs=true,version=0;
 const weekdays=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
 async function api(path,body){const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const v=await r.json();if(!r.ok){if(r.status===401&&path!=='login'){user=null;login()}throw Error(v.error)}return v}
 function toast(s){$('#toast').textContent=s;$('#toast').style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').style.display='none',3500)}
-function login(){unread=false;noticeRevision++;teacherSearch='';clearCredentials();applyAppearance();app.innerHTML=`<main class="login"><div class="brand"><i class="logo"></i> ОРБИТА</div><span class="eyebrow">Твой университет рядом</span><h1>С возвращением.</h1><p>Пары, важные дела и жизнь кампуса — всё в одном месте.</p><form id="login"><label>Email или прежний логин<input name="login" autocomplete="username" required autofocus></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p class="error" role="alert"></p><button class="primary">Войти в кабинет →</button></form><footer>Конкурсный прототип · Неофициальный сервис<br>Все данные вымышлены. Аккаунт выдаёт администратор.</footer></main>`;$('#login').onsubmit=async e=>{e.preventDefault();let btn=e.target.querySelector('button');btn.disabled=true;try{user=await api('login',Object.fromEntries(new FormData(e.target)));selected=today();clubTab='Мои занятия';gradeTab='Оценки';page=['staff','manager'].includes(user.role)?'requests':'schedule';await render()}catch(e){$('.error').textContent=e.message}finally{btn.disabled=false}}}
+function login(){disposeBlocks?.();disposeBlocks=null;unread=false;noticeRevision++;teacherSearch='';clearCredentials();applyAppearance();app.innerHTML=`<main class="login"><div class="brand"><i class="logo"></i> ОРБИТА</div><span class="eyebrow">Твой университет рядом</span><h1>С возвращением.</h1><p>Пары, важные дела и жизнь кампуса — всё в одном месте.</p><form id="login"><label>Email или прежний логин<input name="login" autocomplete="username" required autofocus></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p class="error" role="alert"></p><button class="primary">Войти в кабинет →</button></form><footer>Конкурсный прототип · Неофициальный сервис<br>Все данные вымышлены. Аккаунт выдаёт администратор.</footer></main>`;$('#login').onsubmit=async e=>{e.preventDefault();let btn=e.target.querySelector('button');btn.disabled=true;try{user=await api('login',Object.fromEntries(new FormData(e.target)));selected=today();clubTab='Мои занятия';gradeTab='Оценки';page=['staff','manager'].includes(user.role)?'requests':'schedule';await render()}catch(e){$('.error').textContent=e.message}finally{btn.disabled=false}}}
 const baseNav=[['schedule',uiIcon('schedule'),'Расписание'],['grades',uiIcon('grades'),'Оценки'],['extras',uiIcon('extras'),'Разное'],['profile',uiIcon('profile'),'Профиль']];
 function navigation(){return baseNav}
 function uiIcon(name){
@@ -41,20 +42,29 @@ async function refreshBell(){
 setInterval(refreshBell,15000);
 window.addEventListener('focus',refreshBell);
 document.addEventListener('visibilitychange',refreshBell);
-function activeSection(){return ({dating:'extras',datingAdmin:'extras',contacts:'extras',campus:'extras',appearance:'profile',personal:'profile',emailSettings:'profile',passwordSettings:'profile',support:'profile',supportInbox:'profile',teachers:'extras',teacherCard:teacherOrigin==='schedule'?'schedule':'extras',requests:'extras',clubs:'extras',teaching:'grades',manage:'profile',trash:'profile',mailStatus:'profile',notices:'profile'})[page]||page}
+function activeSection(){return ({blocks:'extras',dating:'extras',datingAdmin:'extras',contacts:'extras',campus:'extras',appearance:'profile',personal:'profile',emailSettings:'profile',passwordSettings:'profile',support:'profile',supportInbox:'profile',teachers:'extras',teacherCard:teacherOrigin==='schedule'?'schedule':'extras',requests:'extras',clubs:'extras',teaching:'grades',manage:'profile',trash:'profile',mailStatus:'profile',notices:'profile'})[page]||page}
 function shell(){applyAppearance(user);app.innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand"><i class="logo"></i> ОРБИТА</div><div><div class="side-label">ЛИЧНЫЙ КАБИНЕТ</div><nav class="nav">${navigation().map(navButton).join('')}${['admin','staff','manager'].includes(user.role)?navButton(['manage',uiIcon('manage'),'Управление']):''}</nav></div><footer>Цифровой деканат будущего<br>Конкурсный концепт · 2026<br>Все данные вымышлены</footer></aside><main class="main"><header class="top"><span class="eyebrow">Кампус / ${esc(user.grp||(user.role==='student'?'Студент':'Сотрудник'))}</span><div class="top-actions">${bellButton()}<button data-page="profile" class="avatar" aria-label="Профиль">${uiIcon('profile')}</button></div></header><div id="content" aria-live="polite"><p class="loading">Загружаем…</p></div><p class="banner">Конкурсный прототип · Все данные вымышлены</p></main><nav class="mobile-nav" aria-label="Основные разделы">${navigation().map(navButton).join('')}</nav></div>`}
 function navButton([id,icon,label]){const active=page===id||(id!=='manage'&&activeSection()===id);return `<button data-page="${id}" class="${active?'active':''}" ${active?'aria-current="page"':''}><span class="icon" aria-hidden="true">${icon}</span>${label}</button>`}
 const heading=(title,sub,extra='')=>`<div class="heading"><div><h1>${title}</h1><p>${sub}</p></div>${extra}</div>`;
 const empty=(title,sub,action='')=>`<div class="empty"><div class="symbol">◌</div><h3>${title}</h3><p>${sub}</p>${action}</div>`;
 async function render(){
+ disposeBlocks?.();disposeBlocks=null;
  if(!user)return login();
  if(user.must_change_password)return forcePassword();
  const v=++version;shell();if(page!=='notices')refreshBell();
  try{
-  const view=({schedule,grades,extras,dating,datingAdmin:dating,contacts,campus,support,supportInbox,teachers,teacherCard,requests,clubs,profile,personal,appearance,emailSettings,passwordSettings,notices,manage,teaching,trash,mailStatus})[page]||schedule;
+  const view=({blocks:()=>'<div class="blocks-root" data-blocks></div>',schedule,grades,extras,dating,datingAdmin:dating,contacts,campus,support,supportInbox,teachers,teacherCard,requests,clubs,profile,personal,appearance,emailSettings,passwordSettings,notices,manage,teaching,trash,mailStatus})[page]||schedule;
   const html=await view(),content=$('#content');
   if(v!==version||!content)return;
   content.innerHTML=html;
+  if (page==='blocks') {
+   content.setAttribute('aria-live','off');
+   const {mountBlocks}=await import('./blocks-game.js');
+   if (v!==version || !content.isConnected) return;
+   disposeBlocks=mountBlocks(content.querySelector('[data-blocks]'), 'account-'+user.id, ()=>{
+    page='extras';render();window.scrollTo({top:0,behavior:'instant'});
+   });
+  }
   if(page==='appearance') {
    const owner = user.id;
    bindAppearance($('[data-appearance]'), async values => {
@@ -190,7 +200,7 @@ async function extras(){
   serviceCard('contacts','contacts','Контакты','Телефоны и почта администрации'),
  ].join('');
  const coach=user.role==='manager'?'<h2 class="services-label">Управление секциями</h2><div class="services-grid">'+serviceCard('requests','clubs','Записи в секции','Заявки на ваши занятия')+'</div>':'';
- const leisure=user.role==='student'?serviceCard('dating','heart','Знакомства','Найти друзей и компанию в МГСУ · 18+'):user.role==='admin'?serviceCard('datingAdmin','heart','Модерация знакомств','Жалобы, спорные анкеты и пересмотр'):'';
+ const leisure=serviceCard('blocks','blocks','Игра Блоки','Собирай линии и ставь рекорды')+(user.role==='student'?serviceCard('dating','heart','Знакомства','Найти друзей и компанию в МГСУ · 18+'):user.role==='admin'?serviceCard('datingAdmin','heart','Модерация знакомств','Жалобы, спорные анкеты и пересмотр'):'');
  return '<h1>Разное</h1><h2 class="services-label">Учёба</h2><div class="services-grid">'+study+'</div>'+coach+(leisure?'<h2 class="services-label">Развлечения</h2><div class="services-grid">'+leisure+'</div>':'');
 }
 const admissionsSource='https://mgsu.ru/postupayushchim/Kontakty/';
