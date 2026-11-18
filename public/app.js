@@ -10,6 +10,7 @@ const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Moscow',year:'
 const iso=d=>d.toISOString().slice(0,10),shift=(d,n)=>{let t=new Date(d+'T12:00:00Z');t.setUTCDate(t.getUTCDate()+n);return iso(t)},fmt=(d,opts={day:'numeric',month:'long'})=>new Date(d+'T12:00:00Z').toLocaleDateString('ru-RU',opts);
 let disposeBlocks=null;
 let lastShownPage=null,lastShownDate=null;
+let shellOwner=null;
 const campusDrawing=()=>'<svg class="campus-drawing" viewBox="0 0 360 134" aria-hidden="true" focusable="false"><use href="#campus-elevation"></use></svg>';
 let unread=false,noticeRevision=0;
 let teacherId=null,teacherOrigin='teachers',teacherSearch='';
@@ -17,7 +18,7 @@ let user=null,page='schedule',selected=today(),mode='Пары',clubTab='Мои �
 const weekdays=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
 async function api(path,body){const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const v=await r.json();if(!r.ok){if(r.status===401&&path!=='login'){user=null;login()}throw Error(v.error)}return v}
 function toast(s){$('#toast').textContent=s;$('#toast').style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').style.display='none',3500)}
-function login(){lastShownPage=null;lastShownDate=null;disposeBlocks?.();disposeBlocks=null;unread=false;noticeRevision++;teacherSearch='';clearCredentials();applyAppearance();app.innerHTML=`<main class="login"><div class="brand"><i class="logo"></i> ОРБИТА</div><div class="login-drawing">${campusDrawing()}</div><h1>С возвращением.</h1><p>Пары, важные дела и жизнь кампуса — всё в одном месте.</p><form id="login"><label>Email или прежний логин<input name="login" autocomplete="username" required autofocus></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p class="error" role="alert"></p><button class="primary">Войти в кабинет →</button></form><footer>Конкурсный прототип · Неофициальный сервис<br>Все данные вымышлены. Аккаунт выдаёт администратор.</footer></main>`;$('#login').onsubmit=async e=>{e.preventDefault();let btn=e.target.querySelector('button');btn.disabled=true;try{user=await api('login',Object.fromEntries(new FormData(e.target)));selected=today();clubTab='Мои занятия';gradeTab='Оценки';page=['staff','manager'].includes(user.role)?'requests':'schedule';await render()}catch(e){$('.error').textContent=e.message}finally{btn.disabled=false}}}
+function login(){shellOwner=null;lastShownPage=null;lastShownDate=null;disposeBlocks?.();disposeBlocks=null;unread=false;noticeRevision++;teacherSearch='';clearCredentials();applyAppearance();app.innerHTML=`<main class="login"><div class="brand"><i class="logo"></i> ОРБИТА</div><div class="login-drawing">${campusDrawing()}</div><h1>С возвращением.</h1><p>Пары, важные дела и жизнь кампуса — всё в одном месте.</p><form id="login"><label>Email или прежний логин<input name="login" autocomplete="username" required autofocus></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p class="error" role="alert"></p><button class="primary">Войти в кабинет →</button></form><footer>Конкурсный прототип · Неофициальный сервис<br>Все данные вымышлены. Аккаунт выдаёт администратор.</footer></main>`;$('#login').onsubmit=async e=>{e.preventDefault();let btn=e.target.querySelector('button');btn.disabled=true;try{user=await api('login',Object.fromEntries(new FormData(e.target)));selected=today();clubTab='Мои занятия';gradeTab='Оценки';page=['staff','manager'].includes(user.role)?'requests':'schedule';await render()}catch(e){$('.error').textContent=e.message}finally{btn.disabled=false}}}
 const baseNav=[['schedule',uiIcon('schedule'),'Расписание'],['grades',uiIcon('grades'),'Оценки'],['extras',uiIcon('extras'),'Разное'],['profile',uiIcon('profile'),'Профиль']];
 function navigation(){return baseNav}
 function uiIcon(name){
@@ -25,7 +26,7 @@ function uiIcon(name){
 }
 function bellLabel(){return unread?'Уведомления, есть непрочитанные':'Уведомления'}
 function bellButton(){
- return `<button class="bell-button" data-page="notices" aria-label="${bellLabel()}">${uiIcon(unread?'bell-active':'bell')}</button>`;
+ return `<button class="bell-button" data-unread="${unread}" data-page="notices" aria-label="${bellLabel()}"><span class="bell-layer bell-read">${uiIcon('bell')}</span><span class="bell-layer bell-unread">${uiIcon('bell-active')}</span></button>`;
 }
 function applyBell(value,viewer,revision){
  if(user?.id!==viewer||revision!==noticeRevision)return;
@@ -33,7 +34,7 @@ function applyBell(value,viewer,revision){
  const button=$('.bell-button');
  if(button){
   button.setAttribute('aria-label',bellLabel());
-  button.innerHTML=uiIcon(unread?'bell-active':'bell');
+  button.dataset.unread=String(unread);
  }
 }
 async function refreshBell(){
@@ -45,7 +46,40 @@ setInterval(refreshBell,15000);
 window.addEventListener('focus',refreshBell);
 document.addEventListener('visibilitychange',refreshBell);
 function activeSection(){return ({blocks:'extras',dating:'extras',datingAdmin:'extras',contacts:'extras',campus:'extras',appearance:'profile',personal:'profile',emailSettings:'profile',passwordSettings:'profile',support:'profile',supportInbox:'profile',teachers:'extras',teacherCard:teacherOrigin==='schedule'?'schedule':'extras',requests:'extras',clubs:'extras',teaching:'grades',manage:'profile',trash:'profile',mailStatus:'profile',notices:'profile'})[page]||page}
-function shell(){applyAppearance(user);app.innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand"><i class="logo"></i> ОРБИТА</div><div><div class="side-label">ЛИЧНЫЙ КАБИНЕТ</div><nav class="nav">${navigation().map(navButton).join('')}${['admin','staff','manager'].includes(user.role)?navButton(['manage',uiIcon('manage'),'Управление']):''}</nav></div><footer>Цифровой деканат будущего<br>Конкурсный концепт · 2026<br>Все данные вымышлены</footer></aside><main class="main"><header class="top"><span class="eyebrow">Кампус / ${esc(user.grp||(user.role==='student'?'Студент':'Сотрудник'))}</span><div class="top-actions">${bellButton()}<button data-page="profile" class="avatar" aria-label="Профиль">${uiIcon('profile')}</button></div></header><div id="content" aria-live="polite"><p class="loading">Загружаем…</p></div><p class="banner">Конкурсный прототип · Все данные вымышлены</p></main><nav class="mobile-nav" aria-label="Основные разделы">${navigation().map(navButton).join('')}</nav></div>`}
+function shell(){applyAppearance(user);if(shellOwner===user.id+':'+user.role && $('.shell')){updateNavigation();return;}shellOwner=user.id+':'+user.role;app.innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand"><i class="logo"></i> ОРБИТА</div><div><div class="side-label">ЛИЧНЫЙ КАБИНЕТ</div><nav class="nav">${navigation().map(navButton).join('')}${['admin','staff','manager'].includes(user.role)?navButton(['manage',uiIcon('manage'),'Управление']):''}</nav></div><footer>Цифровой деканат будущего<br>Конкурсный концепт · 2026<br>Все данные вымышлены</footer></aside><main class="main"><header class="top"><span class="eyebrow">Кампус / ${esc(user.grp||(user.role==='student'?'Студент':'Сотрудник'))}</span><div class="top-actions">${bellButton()}<button data-page="profile" class="avatar" aria-label="Профиль">${uiIcon('profile')}</button></div></header><div id="content" aria-live="polite"><p class="loading">Загружаем…</p></div><p class="banner">Конкурсный прототип · Все данные вымышлены</p></main><nav class="mobile-nav" aria-label="Основные разделы"><span class="nav-drop" aria-hidden="true"></span>${navigation().map(navButton).join('')}</nav></div>`;updateNavigation(false)}
+
+function updateNavigation(animate = true) {
+ const section = activeSection();
+ document.querySelectorAll('.nav button, .mobile-nav button').forEach(button => {
+  const active = button.dataset.page === 'manage' ? page === 'manage' : button.dataset.page === section;
+  button.classList.toggle('active', active);
+  if (active) button.setAttribute('aria-current', 'page');
+  else button.removeAttribute('aria-current');
+ });
+ moveNavDrop(animate);
+}
+function moveNavDrop(animate = true) {
+ const nav = $('.mobile-nav'), drop = nav?.querySelector('.nav-drop');
+ const active = nav?.querySelector('button.active');
+ if (!drop || !active || !nav.offsetWidth) return;
+ const previous = drop.getBoundingClientRect();
+ const width = Math.min(68, active.offsetWidth - 8);
+ const left = active.offsetLeft + (active.offsetWidth - width) / 2;
+ const oldSection = drop.dataset.section;
+ drop.getAnimations().forEach(animation => animation.cancel());
+ drop.style.width = width + 'px';
+ drop.style.left = left + 'px';
+ drop.dataset.section = active.dataset.page;
+ if (!animate || !oldSection || oldSection === active.dataset.page || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+ const offset = previous.left - drop.getBoundingClientRect().left;
+ drop.animate([
+  {transform: 'translateX(' + offset + 'px) scaleX(1)'},
+  {transform: 'translateX(' + offset * .35 + 'px) scaleX(1.32)', offset: .45},
+  {transform: 'translateX(0) scaleX(.96)', offset: .82},
+  {transform: 'translateX(0) scaleX(1)'}
+ ], {duration: 380, easing: 'cubic-bezier(.22,.7,.25,1)'});
+}
+window.addEventListener('resize', () => moveNavDrop(false));
 function navButton([id,icon,label]){const active=page===id||(id!=='manage'&&activeSection()===id);return `<button data-page="${id}" class="${active?'active':''}" ${active?'aria-current="page"':''}><span class="icon" aria-hidden="true">${icon}</span>${label}</button>`}
 const heading=(title,sub,extra='')=>`<div class="heading"><div><h1>${title}</h1><p>${sub}</p></div>${extra}</div>`;
 const empty=(title,sub,action='')=>`<div class="empty"><div class="symbol">◌</div><h3>${title}</h3><p>${sub}</p>${action}</div>`;
@@ -58,7 +92,20 @@ async function render(){
   const view=({blocks:()=>'<div class="blocks-root" data-blocks></div>',schedule,grades,extras,dating,datingAdmin:dating,contacts,campus,support,supportInbox,teachers,teacherCard,requests,clubs,profile,personal,appearance,emailSettings,passwordSettings,notices,manage,teaching,trash,mailStatus})[page]||schedule;
   const html=await view(),content=$('#content');
   if(v!==version||!content)return;
+
+  content.setAttribute('aria-live', page === 'blocks' ? 'off' : 'polite');
+  const previousContent = content.innerHTML;
+  const pageChanged = page !== lastShownPage;
+  content.getAnimations().forEach(animation => animation.cancel());
+  if (previousContent && lastShownPage && pageChanged && window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+   await content.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-5px)'}],
+    {duration:100,easing:'ease-out',fill:'forwards'}).finished.catch(()=>{});
+   if(v!==version)return;
+  }
+  content.getAnimations().forEach(animation => animation.cancel());
+  content.removeAttribute('data-arrival');
   content.innerHTML=html;
+
   if (page!==lastShownPage && page!=='blocks') content.setAttribute('data-arrival','page');
   else if (page==='schedule' && selected!==lastShownDate) content.setAttribute('data-arrival',selected>lastShownDate?'later':'earlier');
   lastShownPage=page;
@@ -303,7 +350,7 @@ document.addEventListener('visibilitychange',refreshInbox);
 window.addEventListener('focus',refreshInbox);
 
 function passwordForm(forced){return '<form data-password-change><label>'+ (forced?'Временный пароль':'Текущий пароль')+'<input type="password" name="current_password" autocomplete="current-password" required maxlength="200"></label><label>Новый пароль<input type="password" name="new_password" autocomplete="new-password" required minlength="8" maxlength="14"></label><label>Повторите новый пароль<input type="password" name="confirm_password" autocomplete="new-password" required minlength="8" maxlength="14"></label><p class="muted">8–14 символов, минимум 3 латинские буквы и заглавная латинская буква или спецсимвол. Без пробелов.</p><p class="error" role="alert"></p><button class="primary">'+(forced?'Сменить пароль и войти':'Сменить пароль')+'</button></form>'}
-function forcePassword(){applyAppearance(user);app.innerHTML='<main class="login"><div class="brand"><i class="logo"></i> ОРБИТА</div><h1>Задайте свой пароль</h1><p>Вы вошли с временным паролем. Смените его, чтобы открыть кабинет.</p>'+passwordForm(true)+'<div class="profile-actions"><button data-action="logout">Выйти из аккаунта</button></div></main>';return ''}
+function forcePassword(){shellOwner=null;applyAppearance(user);app.innerHTML='<main class="login"><div class="brand"><i class="logo"></i> ОРБИТА</div><h1>Задайте свой пароль</h1><p>Вы вошли с временным паролем. Смените его, чтобы открыть кабинет.</p>'+passwordForm(true)+'<div class="profile-actions"><button data-action="logout">Выйти из аккаунта</button></div></main>';return ''}
 document.addEventListener('submit',async e=>{const form=e.target;if(!form.hasAttribute('data-password-change'))return;e.preventDefault();const button=form.querySelector('button'),error=form.querySelector('.error');error.textContent='';button.disabled=true;try{user=await api('password',Object.fromEntries(new FormData(form)));await render();toast('Пароль изменён. Другие сеансы завершены.')}catch(err){if(error.isConnected)error.textContent=err.message}finally{button.disabled=false}});
 window.addEventListener('pagehide',clearCredentials);
 

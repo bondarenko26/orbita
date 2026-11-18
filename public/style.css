@@ -317,3 +317,108 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 @keyframes portal-page-in{from{opacity:.55}to{opacity:1}}
 @keyframes portal-dialog-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @keyframes agenda-in{from{opacity:.6;transform:translateX(var(--agenda-offset))}to{opacity:1;transform:translateX(0)}}
+
+
+/* Shared shapes and motion for the three appearance presets. */
+.days {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 8px;
+}
+.day {
+  aspect-ratio: 1;
+  min-height: 44px;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+}
+.day span { margin-bottom: 3px; }
+.day strong { line-height: 1.1; }
+.week-actions { display: flex; align-items: center; gap: 10px; }
+.week-actions button {
+  height: 48px;
+  min-width: 48px;
+  padding: 0 18px;
+  border-radius: 999px;
+}
+.week-actions button[data-shift] {
+  width: 48px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+.nav-drop { display: none; }
+.bell-button { position: relative; }
+.bell-button .bell-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.bell-button .bell-read { opacity: 1; transform: scale(1); }
+.bell-button .bell-unread { opacity: 0; transform: scale(.7); color: var(--accent); }
+.bell-button[data-unread=true] .bell-read { opacity: 0; transform: scale(.85); }
+.bell-button[data-unread=true] .bell-unread { opacity: 1; transform: scale(1); }
+.bell-button:has(use[href="#icon-bell-active"]) { color: var(--ink); }
+@media(max-width:720px) {
+  .days { gap: 5px; }
+  .day { border-radius: 13px; padding: 5px 0; }
+  .day span { font-size: .65rem; }
+  .day strong { font-size: 1.15rem; }
+  .weekbar { flex-wrap: wrap; row-gap: 12px; }
+  .week-actions { margin-left: auto; }
+  .week-actions button { font-size: .8125rem; padding-inline: 18px; }
+  .week-actions button[data-shift] { font-size: 1.7rem; padding: 0; }
+  .mobile-nav {
+    border-radius: 999px;
+    padding: 8px 10px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    gap: 0;
+    box-shadow: 0 8px 30px #0003;
+    isolation: isolate;
+  }
+  .mobile-nav button { position: relative; padding: 6px 0; border-radius: 999px; }
+  .mobile-nav button .icon { height: 30px; margin-bottom: 6px; display: grid; place-items: center; }
+  .mobile-nav button.active { background: transparent; }
+  .mobile-nav .nav-drop {
+    display: block;
+    position: absolute;
+    top: 9px;
+    height: 40px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 20%, transparent);
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+@media(prefers-reduced-motion:no-preference) {
+  .bell-layer { transition: opacity 240ms ease, transform 300ms cubic-bezier(.2,.7,.2,1); }
+  .mobile-nav button, .mobile-nav .icon { transition: color 220ms ease, transform 180ms ease; }
+  .mobile-nav button:active .icon { transform: scale(.9); }
+  .week-actions button, .primary, .section-tabs button, .service-card {
+    transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+  }
+  .week-actions button:active, .primary:active, .section-tabs button:active { transform: scale(.96); }
+  .service-card:active { transform: scale(.985); }
+  #content[data-arrival=page] { animation: portal-content-in 240ms cubic-bezier(.2,.7,.2,1); }
+  #content[data-arrival=later] .days, #content[data-arrival=earlier] .days {
+    animation: agenda-in 240ms ease-out;
+  }
+  #content[data-arrival=later] .days { --agenda-offset: 10px; }
+  #content[data-arrival=earlier] .days { --agenda-offset: -10px; }
+}
+@keyframes portal-content-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
