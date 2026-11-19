@@ -1,10 +1,10 @@
 const themes = {dark: 'Тёмная', light: 'Светлая', violet: 'Сумерки'};
 const fonts = {system: 'Системный', sans: 'Без засечек (Arial)', serif: 'С засечками (Georgia)', mono: 'Моноширинный'};
 const sizes = {compact: 'Компактный', normal: 'Обычный', large: 'Крупный', larger: 'Очень крупный'};
-const accents = {dark: '#95d9c8', light: '#244e78', violet: '#edbda2'};
+const accents = {dark: '#accaff', light: '#244e78', violet: '#edbda2'};
 // The lightest dark surface or darkest light surface in each theme.
-const surfaces = {dark: '#2b3131', light: '#e8ede8', violet: '#353038'};
-const textColors = {dark: '#edf2ee', light: '#202d33', violet: '#f4eef1'};
+const surfaces = {dark: '#28282c', light: '#e8ede8', violet: '#353038'};
+const textColors = {dark: '#f1f1f3', light: '#202d33', violet: '#f4eef1'};
 const defaults = {theme: 'dark', font: 'system', text_size: 'normal', accent: 'auto', text_color: 'auto'};
 
 function channels(hex) {

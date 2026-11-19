@@ -6,7 +6,8 @@ import {teachingView} from './teaching-ui.js';
 import { managementView, staffRequestsView, syncInbox } from './management-ui.js';
 const $=s=>document.querySelector(s),app=$('#app');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Moscow',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const moscowDate = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Moscow', year:'numeric', month:'2-digit', day:'2-digit'});
+const today = () => moscowDate.format(new Date());
 const iso=d=>d.toISOString().slice(0,10),shift=(d,n)=>{let t=new Date(d+'T12:00:00Z');t.setUTCDate(t.getUTCDate()+n);return iso(t)},fmt=(d,opts={day:'numeric',month:'long'})=>new Date(d+'T12:00:00Z').toLocaleDateString('ru-RU',opts);
 let disposeBlocks=null;
 let lastShownPage=null,lastShownDate=null;
@@ -18,7 +19,7 @@ let user=null,page='schedule',selected=today(),mode='Пары',clubTab='Мои �
 const weekdays=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
 async function api(path,body){const r=await fetch('/api/'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const v=await r.json();if(!r.ok){if(r.status===401&&path!=='login'){user=null;login()}throw Error(v.error)}return v}
 function toast(s){$('#toast').textContent=s;$('#toast').style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').style.display='none',3500)}
-function login(){shellOwner=null;lastShownPage=null;lastShownDate=null;disposeBlocks?.();disposeBlocks=null;unread=false;noticeRevision++;teacherSearch='';clearCredentials();applyAppearance();app.innerHTML=`<main class="login"><div class="brand"><i class="logo"></i> ОРБИТА</div><div class="login-drawing">${campusDrawing()}</div><h1>Вход в кабинет</h1><p>Войдите с учётной записью, которую выдал деканат.</p><form id="login"><label>Email или прежний логин<input name="login" autocomplete="username" required autofocus></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p class="error" role="alert"></p><button class="primary">Войти</button></form><footer>Конкурсный прототип · Неофициальный сервис<br>Все данные вымышлены. Аккаунт выдаёт администратор.</footer></main>`;$('#login').onsubmit=async e=>{e.preventDefault();let btn=e.target.querySelector('button');btn.disabled=true;try{user=await api('login',Object.fromEntries(new FormData(e.target)));selected=today();clubTab='Мои занятия';gradeTab='Оценки';page=['staff','manager'].includes(user.role)?'requests':'schedule';await render()}catch(e){$('.error').textContent=e.message}finally{btn.disabled=false}}}
+function login(){version++;shellOwner=null;lastShownPage=null;lastShownDate=null;disposeBlocks?.();disposeBlocks=null;unread=false;noticeRevision++;teacherSearch='';clearCredentials();applyAppearance();app.innerHTML=`<main class="login"><div class="brand"><i class="logo"></i> ОРБИТА</div><div class="login-drawing">${campusDrawing()}</div><h1>Вход в кабинет</h1><p>Войдите с учётной записью, которую выдал деканат.</p><form id="login"><label>Email или прежний логин<input name="login" autocomplete="username" required autofocus></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p class="error" role="alert"></p><button class="primary">Войти</button></form><footer>Конкурсный прототип · Неофициальный сервис<br>Все данные вымышлены. Аккаунт выдаёт администратор.</footer></main>`;$('#login').onsubmit=async e=>{e.preventDefault();let btn=e.target.querySelector('button');btn.disabled=true;try{user=await api('login',Object.fromEntries(new FormData(e.target)));selected=today();clubTab='Мои занятия';gradeTab='Оценки';page=['staff','manager'].includes(user.role)?'requests':'schedule';await render()}catch(e){$('.error').textContent=e.message}finally{btn.disabled=false}}}
 const baseNav=[['schedule',uiIcon('schedule'),'Расписание'],['grades',uiIcon('grades'),'Оценки'],['extras',uiIcon('extras'),'Разное'],['profile',uiIcon('profile'),'Профиль']];
 function navigation(){return baseNav}
 function uiIcon(name){
@@ -46,9 +47,33 @@ setInterval(refreshBell,15000);
 window.addEventListener('focus',refreshBell);
 document.addEventListener('visibilitychange',refreshBell);
 function activeSection(){return ({blocks:'extras',dating:'extras',datingAdmin:'extras',contacts:'extras',campus:'extras',appearance:'profile',personal:'profile',emailSettings:'profile',passwordSettings:'profile',support:'profile',supportInbox:'profile',teachers:'extras',teacherCard:teacherOrigin==='schedule'?'schedule':'extras',requests:'extras',clubs:'extras',teaching:'grades',manage:'profile',trash:'profile',mailStatus:'profile',notices:'profile'})[page]||page}
-function shell(){applyAppearance(user);if(shellOwner===user.id+':'+user.role && $('.shell')){updateNavigation();return;}shellOwner=user.id+':'+user.role;app.innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand"><i class="logo"></i> ОРБИТА</div><div><div class="side-label">Личный кабинет</div><nav class="nav">${navigation().map(navButton).join('')}${['admin','staff','manager'].includes(user.role)?navButton(['manage',uiIcon('manage'),'Управление']):''}</nav></div><footer>Цифровой деканат будущего<br>Конкурсный концепт · 2026<br>Все данные вымышлены</footer></aside><main class="main"><header class="top"><span class="eyebrow">Кампус / ${esc(user.grp||(user.role==='student'?'Студент':'Сотрудник'))}</span><div class="top-actions">${bellButton()}<button data-page="profile" class="avatar" aria-label="Профиль">${uiIcon('profile')}</button></div></header><div id="content" aria-live="polite"><p class="loading">Загружаем…</p></div><p class="banner">Конкурсный прототип · Все данные вымышлены</p></main><nav class="mobile-nav" aria-label="Основные разделы"><span class="nav-drop" aria-hidden="true"></span>${navigation().map(navButton).join('')}</nav></div>`;updateNavigation(false)}
+function shell(instant) {
+ const owner = user.id + ':' + user.role;
+ if (shellOwner !== owner || !$('.shell')) {
+  shellOwner = owner;
+  applyAppearance(user);
+  const buttons = navigation().map(navButton).join('');
+  const manage = ['admin','staff','manager'].includes(user.role) ? navButton(['manage',uiIcon('manage'),'Управление']) : '';
+  app.innerHTML = `<div class="shell">
+   <aside class="sidebar"><div class="brand"><i class="logo"></i> ОРБИТА</div><div><div class="side-label">Личный кабинет</div><nav class="nav">${buttons}${manage}</nav></div><footer>Цифровой деканат будущего<br>Конкурсный концепт · 2026<br>Все данные вымышлены</footer></aside>
+   <main class="main"><header class="top"><span class="eyebrow">Кампус / ${esc(user.grp||(user.role==='student'?'Студент':'Сотрудник'))}</span><div class="top-actions"><span class="view-status" role="status"></span>${bellButton()}<button data-page="profile" class="avatar" aria-label="Профиль">${uiIcon('profile')}</button></div></header>
+    <div id="content" aria-live="polite"><p class="loading">Загружаем…</p></div><p class="banner">Конкурсный прототип · Все данные вымышлены</p></main>
+   <nav class="mobile-nav" aria-label="Основные разделы">${buttons}<span class="nav-drop" aria-hidden="true"></span></nav>
+  </div>`;
+  const drop = $('.nav-drop');
+  drop.ontransitionrun = drop.ontransitionend = drop.ontransitioncancel = event => {
+   if (event.target === drop && event.propertyName === 'transform' && !event.pseudoElement) {
+    drop.classList.toggle('moving', event.type === 'transitionrun');
+   }
+  };
+  instant = true;
+ } else if (lastShownPage === 'appearance') {
+  applyAppearance(user);
+ }
+ updateNavigation(instant);
+}
 
-function updateNavigation(animate = true) {
+function updateNavigation(instant) {
  const section = activeSection();
  document.querySelectorAll('.nav button, .mobile-nav button').forEach(button => {
   const active = button.dataset.page === 'manage' ? page === 'manage' : button.dataset.page === section;
@@ -56,70 +81,72 @@ function updateNavigation(animate = true) {
   if (active) button.setAttribute('aria-current', 'page');
   else button.removeAttribute('aria-current');
  });
- moveNavDrop(animate);
+ const drop = $('.nav-drop');
+ if (instant) drop.setAttribute('data-instant', '');
+ else drop.removeAttribute('data-instant');
+ const column = navigation().findIndex(([id]) => id === section);
+ if (column >= 0) drop.style.transform = `translateX(${column * 100}%)`;
 }
-function moveNavDrop(animate = true) {
- const nav = $('.mobile-nav'), drop = nav?.querySelector('.nav-drop');
- const active = nav?.querySelector('button.active');
- if (!drop || !active || !nav.offsetWidth) return;
- const previous = drop.getBoundingClientRect();
- const width = Math.min(68, active.offsetWidth - 8);
- const left = active.offsetLeft + (active.offsetWidth - width) / 2;
- const oldSection = drop.dataset.section;
- drop.getAnimations().forEach(animation => animation.cancel());
- drop.style.width = width + 'px';
- drop.style.left = left + 'px';
- drop.dataset.section = active.dataset.page;
- if (!animate || !oldSection || oldSection === active.dataset.page || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
- const offset = previous.left - drop.getBoundingClientRect().left;
- drop.animate([
-  {transform: 'translateX(' + offset + 'px) scaleX(1)'},
-  {transform: 'translateX(' + offset * .35 + 'px) scaleX(1.32)', offset: .45},
-  {transform: 'translateX(0) scaleX(.96)', offset: .82},
-  {transform: 'translateX(0) scaleX(1)'}
- ], {duration: 380, easing: 'cubic-bezier(.22,.7,.25,1)'});
+
+function navButton([id,icon,label]) {
+ const active = page === id || (id !== 'manage' && activeSection() === id);
+ return `<button data-page="${id}" class="${active?'active':''}" aria-label="${label}" ${active?'aria-current="page"':''}><span class="icon" aria-hidden="true">${icon}</span><span class="nav-label">${label}</span></button>`;
 }
-window.addEventListener('resize', () => moveNavDrop(false));
-function navButton([id,icon,label]){const active=page===id||(id!=='manage'&&activeSection()===id);return `<button data-page="${id}" class="${active?'active':''}" ${active?'aria-current="page"':''}><span class="icon" aria-hidden="true">${icon}</span>${label}</button>`}
 const heading=(title,sub,extra='')=>`<div class="heading"><div><h1>${title}</h1><p>${sub}</p></div>${extra}</div>`;
 const empty=(title,sub,action='')=>`<div class="empty"><div class="symbol">◌</div><h3>${title}</h3><p>${sub}</p>${action}</div>`;
-async function render(){
+async function render({keyboard = false, scrollTop = false} = {}) {
  disposeBlocks?.();disposeBlocks=null;
  if(!user)return login();
  if(user.must_change_password)return forcePassword();
- const v=++version;shell();if(page!=='notices')refreshBell();
- try{
+ const v = ++version;
+ const pageChanged = page !== lastShownPage;
+ const dateChanged = !pageChanged && page === 'schedule' && selected !== lastShownDate;
+ shell(keyboard);
+ if (pageChanged && page !== 'notices') refreshBell();
+ const content = $('#content'), status = $('.view-status');
+ const timetable = !pageChanged && page === 'schedule' && content.querySelector('.schedule-layout');
+ const fromContent = keyboard && document.activeElement && content.contains(document.activeElement);
+ content.setAttribute('aria-busy', 'true');
+ content.inert = pageChanged;
+ if (timetable) previewSchedule(content, keyboard);
+ status.textContent = '';
+ const loadingTimer = setTimeout(() => {
+  if (v === version && lastShownPage) status.textContent = 'Загружаем…';
+ }, 240);
+ try {
   const view=({blocks:()=>'<div class="blocks-root" data-blocks></div>',schedule,grades,extras,dating,datingAdmin:dating,contacts,campus,support,supportInbox,teachers,teacherCard,requests,clubs,profile,personal,appearance,emailSettings,passwordSettings,notices,manage,teaching,trash,mailStatus})[page]||schedule;
-  const html=await view(),content=$('#content');
-  if(v!==version||!content)return;
+  const result = await view();
+  if (v !== version) return;
 
+  const focused = document.activeElement;
+  const focusHeading = fromContent && pageChanged && (focused === document.body || content.contains(focused));
   content.setAttribute('aria-live', page === 'blocks' ? 'off' : 'polite');
-  const previousContent = content.innerHTML;
-  const pageChanged = page !== lastShownPage;
-  content.getAnimations().forEach(animation => animation.cancel());
-  if (previousContent && lastShownPage && pageChanged && window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
-   await content.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-5px)'}],
-    {duration:100,easing:'ease-out',fill:'forwards'}).finished.catch(()=>{});
-   if(v!==version)return;
-  }
-  content.getAnimations().forEach(animation => animation.cancel());
   content.removeAttribute('data-arrival');
-  content.removeAttribute('data-week-change');
-  if (page === 'schedule' && lastShownPage === page && lastShownDate && weekStart(selected) !== weekStart(lastShownDate)) {
-   content.setAttribute('data-week-change', 'true');
+  if (!keyboard && lastShownPage) {
+   if (pageChanged && page !== 'blocks') content.setAttribute('data-arrival', 'page');
+   else if (dateChanged) content.setAttribute('data-arrival', selected > lastShownDate ? 'later' : 'earlier');
   }
-  content.innerHTML=html;
-
-  if (page!==lastShownPage && page!=='blocks') content.setAttribute('data-arrival','page');
-  else if (page==='schedule' && selected!==lastShownDate) content.setAttribute('data-arrival',selected>lastShownDate?'later':'earlier');
-  lastShownPage=page;
-  if(page==='schedule') lastShownDate=selected;
+  if (timetable) {
+   content.querySelector('.weekbar strong').textContent = result.weekLabel;
+   content.querySelector('.agenda-list').outerHTML = `<div class="agenda-list">${result.agenda}</div>`;
+   content.querySelector('.aside-card').innerHTML = result.summary;
+  } else {
+   content.innerHTML = view === schedule ? schedulePage(result) : result;
+  }
+  content.inert = false;
+  if (scrollTop) window.scrollTo({top:0, behavior:'instant'});
+  if (focusHeading) {
+   const title = content.querySelector('h1');
+   if (title) { title.tabIndex = -1; title.focus({preventScroll:true}); }
+  }
+  lastShownPage = page;
+  if (page === 'schedule') lastShownDate = selected;
   if (page==='blocks') {
    content.setAttribute('aria-live','off');
    const {mountBlocks}=await import('./blocks-game.js');
    if (v!==version || !content.isConnected) return;
    disposeBlocks=mountBlocks(content.querySelector('[data-blocks]'), 'account-'+user.id, ()=>{
-    page='extras';render();window.scrollTo({top:0,behavior:'instant'});
+    page='extras';render({scrollTop:true});
    });
   }
   if(page==='appearance') {
@@ -134,14 +161,118 @@ async function render(){
   }
   if(page==='campus')bindCampusDirectory($('[data-campus-guide]'));
   if(page==='dating'||page==='datingAdmin')bindDating($('[data-dating]'),{admin:page==='datingAdmin',api,esc,uiIcon,toast});
- }catch(e){if(v===version&&$('#content'))$('#content').innerHTML=empty('Не удалось загрузить',esc(e.message),'<button data-action="refresh">Повторить</button>')}
+ } catch (e) {
+  if (v === version) {
+   content.removeAttribute('data-arrival');
+   content.innerHTML = empty('Не удалось загрузить',esc(e.message),'<button data-action="refresh">Повторить</button>');
+   if (scrollTop) window.scrollTo({top:0, behavior:'instant'});
+  }
+ } finally {
+  clearTimeout(loadingTimer);
+  if (v === version) {
+   content.inert = false;
+   content.removeAttribute('aria-busy');
+   status.textContent = '';
+  }
+ }
 }
 function weekStart(date) {
  const weekday = new Date(date + 'T12:00:00Z').getUTCDay();
  return shift(date, -((weekday + 6) % 7));
 }
-async function schedule(){const {lessons,clubs,week}=await api('schedule?date='+selected);const mon=weekStart(selected);let list=lessons.filter(l=>mode==='Пары'?!['Экзамен','Зачёт','Консультация'].includes(l.kind):['Экзамен','Зачёт','Консультация'].includes(l.kind));if(showClubs&&mode==='Пары')list.push(...clubs.map(c=>({...c,subject:c.title,kind:'Секция',room:c.place,teacher:'Ваша секция',club:true})));list.sort((a,b)=>a.start.localeCompare(b.start));let cards='',prev=null;for(const l of list){if(prev&&prev.status!=='cancelled'&&l.status!=='cancelled'&&mins(l.start)-mins(prev.end)>=45){let n=mins(l.start)-mins(prev.end);cards+=`<div class="gap"><span>◷</span>Окно ${Math.floor(n/60)?Math.floor(n/60)+' ч ':''}${n%60?n%60+' мин':''}</div>`}cards+=`<article class="lesson ${l.kind==='Практика'?'practice':l.kind==='Лабораторная'||l.club?'lab':''}"><div class="lesson-time"><strong>${esc(l.start)}</strong><span>${esc(l.end)}</span></div><div><h3>${esc(l.subject)}</h3><div class="meta">${l.room ? `<span class="lesson-room">${uiIcon('campus')}${esc(l.room)}</span>` : ''}<span class="lesson-kind">${esc(l.kind)}</span></div><p class="teacher">${l.teacher_id?`<button class="teacher-link" data-teacher="${l.teacher_id}">${esc(l.teacher_name||l.teacher)}</button>`:esc(l.teacher)}${l.group_name?' · '+esc(l.group_name):''}</p>${l.change?`<p class="change-notice">${esc(l.change)}</p>`:''}${l.status==='cancelled'?'<span class="badge">Отменено</span>':''}${!l.club&&user.role==='student'?`<button class="note" data-note="${l.id}" data-value="${esc(l.note||'')}">${l.note?esc(l.note).slice(0,90):'Добавить заметку'}</button>`:''}</div></article>`;prev=l}
-return '<header class="schedule-cover">'+campusDrawing()+heading('Расписание',`${fmt(selected,{weekday:'long',day:'numeric',month:'long'})} · ${esc(user.grp||(user.role==='teacher'?'Мои занятия':user.role==='student'?'Группа пока не назначена':'Расписание групп — в управлении'))}`)+'</header>'+`<div class="schedule-layout"><section><div class="segmented">${['Пары','Сессия'].map(m=>`<button data-mode="${m}" class="${mode===m?'active':''}">${m}</button>`).join('')}</div><div class="weekbar"><div><strong>${week===null?'Семестр ещё не настроен':week>0?week+'-я неделя · '+(week%2?'нечётная':'чётная'):'До начала семестра'}</strong><small>${fmt(mon)} — ${fmt(shift(mon,6))}</small></div><div class="week-actions"><button data-action="today">Сегодня</button><button data-shift="-7" aria-label="Предыдущая неделя">‹</button><button data-shift="7" aria-label="Следующая неделя">›</button></div></div><div class="days">${Array.from({length:7},(_,i)=>{let d=shift(mon,i);return `<button class="day ${d===selected?'active':''} ${d===today()?'today':''}" data-date="${d}" aria-pressed="${d===selected}"><span>${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][i]}</span><strong>${Number(d.slice(-2))}</strong></button>`}).join('')}</div><label class="checkline"><input type="checkbox" id="showClubs" ${showClubs?'checked':''}>Показывать мои секции</label><div class="agenda-list">${cards||empty('Занятий нет',mode==='Пары'?'На выбранный день занятий нет.':'На этот день экзаменов и зачётов нет.','<button data-shift="1">Следующий день →</button>')}</div></section><aside class="aside"><div class="aside-card"><span class="eyebrow">Твой день</span><div class="big">${list.length}</div><h3>${list.length?'занятий в расписании':'время для себя'}</h3><p>${list.length?esc(list[0].start)+' — '+esc(list.at(-1).end):'Можно подготовиться к следующей неделе или найти новое увлечение.'}</p></div><div class="aside-card"><h3>Кружки и секции</h3><p>Расписание занятий и запись в кружки.</p><button class="link-button" data-page="clubs" data-section="Кружки">Найти кружок</button></div><div class="aside-card"><h3>Справки</h3><p>Закажи справку и следи за её готовностью прямо здесь.</p><button class="link-button" data-page="requests">Перейти к справкам</button></div></aside></div>`}
+function dayButtons(monday) {
+ const current = today();
+ return Array.from({length:7}, (_,i) => {
+  const date = shift(monday,i), active = date === selected, isToday = date === current;
+  return `<button class="day${active?' active':''}${isToday?' today':''}" data-date="${date}" aria-pressed="${active}" ${isToday?'aria-current="date"':''}><span>${weekdays[(i+1)%7]}</span><strong>${Number(date.slice(-2))}</strong></button>`;
+ }).join('');
+}
+
+function scheduleSubtitle() {
+ const group = user.grp || (user.role === 'teacher' ? 'Мои занятия' : user.role === 'student' ? 'Группа пока не назначена' : 'Расписание групп — в управлении');
+ return fmt(selected,{weekday:'long',day:'numeric',month:'long'}) + ' · ' + group;
+}
+
+function weekRange(monday) {
+ return fmt(monday) + ' — ' + fmt(shift(monday,6));
+}
+
+function previewSchedule(content, keyboard) {
+ const strip = content.querySelector('.days'), monday = weekStart(selected);
+ const previousMonday = strip.firstElementChild.dataset.date;
+ if (previousMonday !== monday) {
+  if (keyboard) strip.removeAttribute('data-slide');
+  else strip.dataset.slide = monday > previousMonday ? 'later' : 'earlier';
+  strip.innerHTML = dayButtons(monday);
+  content.querySelector('.weekbar small').textContent = weekRange(monday);
+  content.querySelector('.weekbar strong').textContent = 'Учебная неделя';
+ } else {
+  const current = today();
+  for (const button of strip.children) {
+   const active = button.dataset.date === selected, isToday = button.dataset.date === current;
+   button.classList.toggle('active', active);
+   button.classList.toggle('today', isToday);
+   button.setAttribute('aria-pressed', String(active));
+   if (isToday) button.setAttribute('aria-current', 'date');
+   else button.removeAttribute('aria-current');
+  }
+ }
+ content.querySelector('.schedule-cover .heading p').textContent = scheduleSubtitle();
+ for (const button of content.querySelectorAll('[data-mode]')) {
+  const active = button.dataset.mode === mode;
+  button.classList.toggle('active', active);
+  button.setAttribute('aria-pressed', String(active));
+ }
+ // Leave the date controls and focus in place. Old lessons cannot receive a note for the new date.
+ content.querySelector('.agenda-list').inert = true;
+}
+
+async function schedule() {
+ const session = mode === 'Сессия', includeClubs = showClubs && !session;
+ const student = user.role === 'student';
+ const {lessons, clubs, week} = await api('schedule?date=' + selected);
+ const examTypes = ['Экзамен','Зачёт','Консультация'];
+ const list = lessons.filter(lesson => examTypes.includes(lesson.kind) === session);
+ if (includeClubs) list.push(...clubs.map(c => ({...c, subject:c.title, kind:'Секция', room:c.place, teacher:'Ваша секция', club:true})));
+ list.sort((a,b) => a.start.localeCompare(b.start));
+ let cards = '';
+ for (const [index, lesson] of list.entries()) {
+  const previous = list[index-1];
+  const gap = previous ? mins(lesson.start) - mins(previous.end) : 0;
+  if (gap >= 45 && previous.status !== 'cancelled' && lesson.status !== 'cancelled') {
+   const hours = Math.floor(gap/60), minutes = gap%60;
+   const duration = [hours && hours+' ч', minutes && minutes+' мин'].filter(Boolean).join(' ');
+   cards += `<div class="gap"><span>◷</span>Окно ${duration}</div>`;
+  }
+  const type = lesson.kind === 'Практика' ? 'practice' : lesson.kind === 'Лабораторная' || lesson.club ? 'lab' : '';
+  const teacher = lesson.teacher_id ? `<button class="teacher-link" data-teacher="${lesson.teacher_id}">${esc(lesson.teacher_name||lesson.teacher)}</button>` : esc(lesson.teacher);
+  const note = student && !lesson.club ? `<button class="note" data-note="${lesson.id}" data-value="${esc(lesson.note)}">${esc(lesson.note?.slice(0,90)||'Добавить заметку')}</button>` : '';
+  cards += `<article class="lesson ${type}">
+   <div class="lesson-time"><strong>${esc(lesson.start)}</strong><span>${esc(lesson.end)}</span></div>
+   <div><h3>${esc(lesson.subject)}</h3><div class="meta">${lesson.room ? `<span class="lesson-room">${uiIcon('campus')}${esc(lesson.room)}</span>` : ''}<span class="lesson-kind">${esc(lesson.kind)}</span></div>
+   <p class="teacher">${teacher}${lesson.group_name?' · '+esc(lesson.group_name):''}</p>
+   ${lesson.change?`<p class="change-notice">${esc(lesson.change)}</p>`:''}${lesson.status==='cancelled'?'<span class="badge">Отменено</span>':''}${note}</div>
+  </article>`;
+ }
+ return {
+  weekLabel: week===null?'Семестр ещё не настроен':week>0?week+'-я неделя · '+(week%2?'нечётная':'чётная'):'До начала семестра',
+  agenda: cards||empty('Занятий нет',mode==='Пары'?'На выбранный день занятий нет.':'На этот день экзаменов и зачётов нет.','<button data-shift="1">Следующий день →</button>'),
+  summary: `<span class="eyebrow">Твой день</span><div class="big">${list.length}</div><h3>${list.length?'занятий в расписании':'время для себя'}</h3><p>${list.length?esc(list[0].start)+' — '+esc(list.at(-1).end):'Можно подготовиться к следующей неделе или найти новое увлечение.'}</p>`
+ };
+}
+
+function schedulePage({weekLabel, agenda, summary}) {
+ const monday = weekStart(selected);
+ return `<header class="schedule-cover">${campusDrawing()}${heading('Расписание',esc(scheduleSubtitle()))}</header>
+  <div class="schedule-layout"><section>
+   <div class="segmented">${['Пары','Сессия'].map(m=>`<button data-mode="${m}" class="${mode===m?'active':''}" aria-pressed="${mode===m}">${m}</button>`).join('')}</div>
+   <div class="weekbar"><div><strong>${esc(weekLabel)}</strong><small>${weekRange(monday)}</small></div><div class="week-actions"><button data-action="today">Сегодня</button><button data-shift="-7" aria-label="Предыдущая неделя">‹</button><button data-shift="7" aria-label="Следующая неделя">›</button></div></div>
+   <div class="days">${dayButtons(monday)}</div>
+   <label class="checkline"><input type="checkbox" id="showClubs" ${showClubs?'checked':''}>Показывать мои секции</label>
+   <div class="agenda-list">${agenda}</div></section>
+   <aside class="aside"><div class="aside-card">${summary}</div><div class="aside-card"><h3>Кружки и секции</h3><p>Расписание занятий и запись в кружки.</p><button class="link-button" data-page="clubs" data-section="Кружки">Найти кружок</button></div><div class="aside-card"><h3>Справки</h3><p>Закажи справку и следи за её готовностью прямо здесь.</p><button class="link-button" data-page="requests">Перейти к справкам</button></div></aside>
+  </div>`;
+}
 const mins=t=>Number(t.split(':')[0])*60+Number(t.split(':')[1]);
 async function grades(){
  if(['teacher','staff','admin'].includes(user.role))return teaching();
@@ -341,7 +472,16 @@ const form=(title,endpoint,fields)=>`<details class="card"><summary>${title}</su
 async function teaching(){return teachingView(api)}
 async function manage(){return backToProfile()+managementView(await api('manage'),user,api)}
 function modal(title,fields,onSubmit,actionLabel='Сохранить'){$('#modal-content').innerHTML=`<h2>${title}</h2><form id="modal-form">${fields}<p class="error" role="alert"></p><div class="form-actions"><button type="button" data-action="close">Отмена</button><button class="primary">${esc(actionLabel)}</button></div></form>`;$('#modal').showModal();$('#modal-form').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('.primary');b.disabled=true;try{const result=await onSubmit(Object.fromEntries(new FormData(e.target)));$('#modal').close();toast(result?.mail_queued?'Временный пароль поставлен в очередь отправки':actionLabel==='Удалить'?'Запись удалена':'Сохранено');await render()}catch(e){$('#modal-form .error').textContent=e.message}finally{b.disabled=false}}}
-document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;try{if(b.dataset.supportReply){replyDialog(b.dataset.supportReply)}else if(b.dataset.action==='support-new'){supportDialog()}else if(b.dataset.teacher){teacherOrigin=page==='schedule'?'schedule':'teachers';teacherId=Number(b.dataset.teacher);page='teacherCard';await render();window.scrollTo({top:0,behavior:'instant'})}else if(b.dataset.reviewAction){reviewDialog(b)}else if(b.dataset.changeEmail){modal('Сменить email-логин','<label>Новый email<input type="email" name="email" required></label><label>Ваш текущий пароль сотрудника<input type="password" name="current_password" autocomplete="current-password" required></label><p>Старые сеансы владельца завершатся. На новый email будет отправлен новый временный пароль.</p>',v=>api('accounts/email',{...v,id:Number(b.dataset.changeEmail)}))}else if(b.dataset.recordDelete){modal('Удалить запись?','<p>Запись исчезнет из кабинета. Её можно восстановить в разделе «Удалённые».</p>',()=>api('records/'+b.dataset.recordDelete+'/delete',{id:Number(b.dataset.recordId)}),'Удалить')}else if(b.dataset.recordRestore){await api('records/'+b.dataset.recordRestore+'/restore',{id:Number(b.dataset.recordId)});await render()}else if(b.dataset.resetPassword){b.disabled=true;try{const result=await api('accounts/reset',{id:Number(b.dataset.resetPassword)});toast('Временный пароль поставлен в очередь отправки на email')}finally{b.disabled=false}}else if(b.dataset.page){page=b.dataset.page;if(b.dataset.section)clubTab=b.dataset.section;await render();window.scrollTo({top:0,behavior:'instant'})}else if(b.dataset.gradeTab){gradeTab=b.dataset.gradeTab;await render()}else if(b.dataset.date){selected=b.dataset.date;await render()}else if(b.dataset.shift){selected=shift(selected,Number(b.dataset.shift));await render()}else if(b.dataset.mode){mode=b.dataset.mode;await render()}else if(b.dataset.clubtab){clubTab=b.dataset.clubtab;await render()}else if(b.dataset.note){const id=Number(b.dataset.note);modal('Личная заметка','<label>Видна только тебе<textarea name="text" maxlength="2000">'+esc(b.dataset.value)+'</textarea></label>',v=>api('notes',{lesson_id:id,date:selected,text:v.text}))}else if(b.dataset.leave){await api('leave',{club_id:Number(b.dataset.leave)});toast('Запись отменена');await render()}else if(b.dataset.join){b.disabled=true;await api('join',{club_id:Number(b.dataset.join)});toast('Заявка отправлена руководителю');await render()}else switch(b.dataset.action){case 'today':selected=today();await render();break;case 'refresh':await render();break;case 'close':$('#modal').close();break;case 'logout':await api('logout',{});user=null;login();break;case 'request':modal('Новая заявка',select('type','Что нужно',['Справка об обучении','Справка о стипендии','Заявление в деканат'])+'<label>Комментарий<textarea name="comment" maxlength="2000" placeholder="Уточни назначение или расскажи о своей ситуации"></textarea></label>',v=>api('requests',v));break;case 'read':await api('notices/read',{});await render();break}}catch(e){toast(e.message);b.disabled=false}});
+document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
+ const keyboard=e.detail===0;
+ try{if(b.dataset.supportReply){replyDialog(b.dataset.supportReply)}else if(b.dataset.action==='support-new'){supportDialog()}else if(b.dataset.teacher){teacherOrigin=page==='schedule'?'schedule':'teachers';teacherId=Number(b.dataset.teacher);page='teacherCard';await render({keyboard,scrollTop:true})}else if(b.dataset.reviewAction){reviewDialog(b)}else if(b.dataset.changeEmail){modal('Сменить email-логин','<label>Новый email<input type="email" name="email" required></label><label>Ваш текущий пароль сотрудника<input type="password" name="current_password" autocomplete="current-password" required></label><p>Старые сеансы владельца завершатся. На новый email будет отправлен новый временный пароль.</p>',v=>api('accounts/email',{...v,id:Number(b.dataset.changeEmail)}))}else if(b.dataset.recordDelete){modal('Удалить запись?','<p>Запись исчезнет из кабинета. Её можно восстановить в разделе «Удалённые».</p>',()=>api('records/'+b.dataset.recordDelete+'/delete',{id:Number(b.dataset.recordId)}),'Удалить')}else if(b.dataset.recordRestore){await api('records/'+b.dataset.recordRestore+'/restore',{id:Number(b.dataset.recordId)});await render()}else if(b.dataset.resetPassword){b.disabled=true;try{const result=await api('accounts/reset',{id:Number(b.dataset.resetPassword)});toast('Временный пароль поставлен в очередь отправки на email')}finally{b.disabled=false}}
+ else if(b.dataset.page){page=b.dataset.page;if(b.dataset.section)clubTab=b.dataset.section;await render({keyboard,scrollTop:true})}
+ else if(b.dataset.gradeTab){gradeTab=b.dataset.gradeTab;await render({keyboard})}
+ else if(b.dataset.date){selected=b.dataset.date;await render({keyboard})}
+ else if(b.dataset.shift){selected=shift(selected,Number(b.dataset.shift));await render({keyboard})}
+ else if(b.dataset.mode){mode=b.dataset.mode;await render({keyboard})}
+ else if(b.dataset.clubtab){clubTab=b.dataset.clubtab;await render({keyboard})}
+ else if(b.dataset.note){const id=Number(b.dataset.note);modal('Личная заметка','<label>Видна только тебе<textarea name="text" maxlength="2000">'+esc(b.dataset.value)+'</textarea></label>',v=>api('notes',{lesson_id:id,date:selected,text:v.text}))}else if(b.dataset.leave){await api('leave',{club_id:Number(b.dataset.leave)});toast('Запись отменена');await render()}else if(b.dataset.join){b.disabled=true;await api('join',{club_id:Number(b.dataset.join)});toast('Заявка отправлена руководителю');await render()}else switch(b.dataset.action){case 'today':selected=today();await render({keyboard});break;case 'refresh':await render();break;case 'close':$('#modal').close();break;case 'logout':await api('logout',{});user=null;login();break;case 'request':modal('Новая заявка',select('type','Что нужно',['Справка об обучении','Справка о стипендии','Заявление в деканат'])+'<label>Комментарий<textarea name="comment" maxlength="2000" placeholder="Уточни назначение или расскажи о своей ситуации"></textarea></label>',v=>api('requests',v));break;case 'read':await api('notices/read',{});await render();break}}catch(e){toast(e.message);b.disabled=false}});
 document.addEventListener('change',e=>{if(e.target.id==='showClubs'){showClubs=e.target.checked;render()}});
 document.addEventListener('submit',async e=>{if(!e.target.dataset.endpoint)return;e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;try{const result=await api(e.target.dataset.endpoint,Object.fromEntries(new FormData(e.target)));toast('Сохранено');await render();if(result.mail_queued)toast('Временный пароль поставлен в очередь отправки на email')}catch(e){toast(e.message)}finally{btn.disabled=false}});
 try{user=await api('me');if(['staff','manager'].includes(user.role))page='requests';await render()}catch{login()}
