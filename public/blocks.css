@@ -12,7 +12,7 @@ body:has(.blocks-root){margin:0;background:#0a1025}
 }
 .blocks-root::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:.29;background-image:radial-gradient(#8ca2cc66 1px,transparent 1px);background-size:19px 19px;mask-image:linear-gradient(140deg,black,transparent 75%)}
 .blocks-root [hidden]{display:none!important}
-.service-card[data-page=blocks] .service-icon{background:linear-gradient(145deg,#406bb2,#44419c)}
+
 .blocks-root [data-bl-status]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .blocks-root button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;min-height:44px}
 .blocks-root button:focus-visible,.bl-board:focus-visible{outline:3px solid #9ef1ff;outline-offset:3px}
