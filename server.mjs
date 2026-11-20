@@ -1,5 +1,6 @@
 import {installMail} from './mail.mjs';
 import {installDeletion} from './deletion.mjs';
+import {purgeTrash} from './trash-retention.mjs';
 import {installTeacherReviews} from './teacher-reviews.mjs';
 import {installSupport} from './support.mjs';
 import {installDating} from './dating.mjs';
@@ -156,4 +157,9 @@ async function handler(req,res){
 }
 export const server=http.createServer(handler);
 server.on('close',datingWorker.stop);
+function cleanTrash() {
+ try { purgeTrash(db); } catch (error) { console.error('Не удалось очистить корзину:',error.message); }
+}
+cleanTrash();
+setInterval(cleanTrash,15*60*1000).unref();
 server.listen(Number(process.env.PORT||3000),process.env.HOST||'127.0.0.1',()=>console.log(`Орбита: http://${process.env.HOST||'127.0.0.1'}:${server.address().port}`));

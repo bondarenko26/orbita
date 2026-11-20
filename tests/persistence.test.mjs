@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdtempSync,rmSync} from 'node:fs';
+import {DatabaseSync} from 'node:sqlite';
 import os from 'node:os';
 import path from 'node:path';
 import ExcelJS from 'exceljs';
@@ -20,5 +21,33 @@ test('empty installation and data survive a real server restart',async()=>{
  assert.equal((await request('manage',null,auth.cookie)).body.entities.users.rows.length,1);
  await stop();instance=await start();assert.equal(instance.password,undefined);
  const restored=await request('manage',null,auth.cookie);assert.equal(restored.status,200);assert.equal(restored.body.groups[0].name,'ТЕСТ-101');assert.equal(restored.body.audit.length,1);
+
+ const createGroup=(name)=>request('manage/groups',{name,program_id:state.body.catalog.find(n=>n.kind==='program').id,course:1,admission_year:2026},auth.cookie);
+ const recent=await createGroup('ТЕСТ-КОРЗИНА');
+ assert.equal(recent.status,200);
+ assert.equal((await request('records/groups/delete',{id:recent.body.id},auth.cookie)).status,200);
+ {
+  const db=new DatabaseSync(path.join(dir,'orbita.sqlite'));
+  try {
+   db.exec(`INSERT INTO users(login,password,name,role,deleted_at)
+     VALUES('expired@example.test','unused','Пробный','student',datetime('now','-31 days'));
+    INSERT INTO grades(user_id,subject) SELECT id,'Пробный предмет' FROM users WHERE login='expired@example.test';
+    UPDATE groups SET deleted_at=datetime('now','-31 days') WHERE name='ТЕСТ-101';`);
+  } finally { db.close(); }
+ }
+ assert.equal((await request('records/groups/restore',{id:created.body.id},auth.cookie)).status,410);
+ const trash=await request('trash',null,auth.cookie);
+ assert.deepEqual(trash.body.map(row=>row.id),[recent.body.id]);
+ assert.equal(Date.parse(trash.body[0].expires_at)-Date.parse(trash.body[0].date),30*86400000);
+ await stop();
+ instance=await start();
+ const db=new DatabaseSync(path.join(dir,'orbita.sqlite'),{readOnly:true});
+ try {
+  assert.equal(db.prepare("SELECT count(*) n FROM users WHERE login='expired@example.test'").get().n,0);
+  assert.equal(db.prepare('SELECT count(*) n FROM grades').get().n,0);
+  assert.equal(db.prepare("SELECT count(*) n FROM groups WHERE name='ТЕСТ-101'").get().n,0);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
+ } finally { db.close(); }
+ assert.equal((await request('records/groups/restore',{id:recent.body.id},auth.cookie)).status,200);
  }finally{if(child&&child.exitCode===null)await stop();rmSync(dir,{recursive:true,force:true})}
 });

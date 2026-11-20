@@ -1,3 +1,5 @@
+import {trashRetentionMs} from './trash-retention.mjs';
+
 const tables=['groups','users','lessons','clubs','events','grades'];
 let enabled=false;
 export const liveSql=sql=>enabled?sql.replace(/\b(FROM|JOIN)\s+(groups|users|lessons|clubs|events|grades)\b/gi,(_,verb,table)=>verb+' live_'+table.toLowerCase()):sql;
@@ -27,10 +29,15 @@ export function installDeletion(db,{fail,academic}){
  function handle(p,method,b,u,send){
   if(p==='/api/trash'&&method==='GET'){
    if(!['admin','staff','manager','teacher'].includes(u.role))fail(403,'Нет доступа');
-   send(tables.flatMap(table=>all(`SELECT * FROM ${table} WHERE deleted_at IS NOT NULL`).filter(r=>access(table,r,u)).map(r=>({table,id:r.id,label:r.name||r.title||r.subject,date:r.deleted_at}))));return true;
+   const now=Date.now();
+   send(tables.flatMap(table=>all(`SELECT * FROM ${table} WHERE deleted_at IS NOT NULL`)
+    .filter(r=>Date.parse(r.deleted_at)+trashRetentionMs>now&&access(table,r,u))
+    .map(r=>({table,id:r.id,label:r.name||r.title||r.subject,date:r.deleted_at,expires_at:new Date(Date.parse(r.deleted_at)+trashRetentionMs).toISOString()}))));return true;
   }
   const m=p.match(/^\/api\/records\/(groups|users|lessons|clubs|events|grades)\/(delete|restore)$/);if(!m||method!=='POST')return false;
-  const [,table,action]=m,r=one(`SELECT * FROM ${table} WHERE id=?`,Number(b.id)||0);if(!r||!access(table,r,u))fail(404,'Запись не найдена');const restore=action==='restore';if(restore?!r.deleted_at:!!r.deleted_at)fail(409,'Запись уже изменена');check(table,r,restore,u);
+  const [,table,action]=m,r=one(`SELECT * FROM ${table} WHERE id=?`,Number(b.id)||0);if(!r||!access(table,r,u))fail(404,'Запись не найдена');const restore=action==='restore';if(restore?!r.deleted_at:!!r.deleted_at)fail(409,'Запись уже изменена');
+  if(restore&&Date.parse(r.deleted_at)+trashRetentionMs<=Date.now())fail(410,'Срок восстановления истёк');
+  check(table,r,restore,u);
   const now=restore?null:new Date().toISOString();db.exec('BEGIN IMMEDIATE');try{
    run(`UPDATE ${table} SET deleted_at=? WHERE id=?`,now,r.id);
    if(table==='lessons')academic.syncLessonAssignment(r.assignment_id);

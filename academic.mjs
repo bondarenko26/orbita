@@ -121,7 +121,10 @@ export function installAcademic(db,{fail,date}){
  if(p==='/api/teaching/journal'&&method==='GET'){
  const d=date(url.searchParams.get('date')||''),g=group(a.group_id);const students=all("SELECT id,name,subgroup FROM users WHERE role='student' AND active=1 AND group_id=? AND (?='' OR subgroup=?) ORDER BY name",a.group_id,a.subgroup,a.subgroup),ids=new Set(students.map(s=>s.id));
  const lessons=baseCalendar(d,{id:u.id,grp:g.name,subgroup:a.subgroup}).lessons.filter(l=>l.assignment_id===a.id&&l.status!=='cancelled');
- send({assignment:a,students,lessons,grades:all('SELECT * FROM grades WHERE assignment_id=? ORDER BY date DESC,id DESC',aid).filter(r=>ids.has(r.user_id)),attendance:all('SELECT * FROM attendance WHERE assignment_id=? AND date=?',aid,d).filter(r=>ids.has(r.user_id)),history:all('SELECT h.*,u.name AS actor_name FROM journal_history h JOIN history_users u ON u.id=h.actor WHERE h.assignment_id=? ORDER BY h.id DESC LIMIT 100',aid).filter(r=>ids.has(JSON.parse(r.new_json).user_id))});return true;
+ const historyRows=all(`SELECT h.*,coalesce(u.name,'Удалённый аккаунт') AS actor_name
+  FROM journal_history h LEFT JOIN history_users u ON u.id=h.actor
+  WHERE h.assignment_id=? ORDER BY h.id DESC LIMIT 100`,aid);
+ send({assignment:a,students,lessons,grades:all('SELECT * FROM grades WHERE assignment_id=? ORDER BY date DESC,id DESC',aid).filter(r=>ids.has(r.user_id)),attendance:all('SELECT * FROM attendance WHERE assignment_id=? AND date=?',aid,d).filter(r=>ids.has(r.user_id)),history:historyRows.filter(r=>ids.has(JSON.parse(r.new_json).user_id))});return true;
  }
  if(method==='POST'&&['/api/teaching/grade','/api/teaching/attendance'].includes(p)){
  const sid=Number(b.user_id),d=date(b.date);checkStudent(a,sid,d);if(!a.active)fail(403,'Назначение закрыто');let old=null,next,entity,id;
