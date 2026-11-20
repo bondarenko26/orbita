@@ -37,7 +37,11 @@ export function installManagement(db,ctx){
  const numericIds=new Set(['user_id','owner','course','day','weekday','capacity','archived','enrollment_open','active','group_id','teacher_id','assignment_id','admission_year']);
  function owned(table,id,u){const row=one(`SELECT * FROM ${table} WHERE id=?`,id);if(!row||(['clubs','events'].includes(table)&&u.role!=='admin'&&row.owner!==u.id))fail(404,'Запись не найдена');return row}
  function validate(table,b,u,old){
- const schema=schemas[table],v={};for(const f of schema.fields){let x=b[f.name];if(f.name==='password'){if(x)v.password=hashPassword(x);else if(!old)fail(400,'Задайте пароль нового аккаунта');continue}
+ const schema=schemas[table],v={};
+ // Older clients submit an existing assignment instead of the direct selection.
+ const legacyLesson=table==='lessons' && b.assignment_id && b.teacher_id===undefined && b.group_id===undefined;
+ const fields=legacyLesson?[{name:'assignment_id',label:'Назначение'},...schema.fields.filter(f=>!['teacher_id','group_id','subgroup','subject'].includes(f.name))]:schema.fields;
+ for(const f of fields){let x=b[f.name];if(f.name==='password'){if(x)v.password=hashPassword(x);else if(!old)fail(400,'Задайте пароль нового аккаунта');continue}
  if(f.name==='owner'&&u.role==='manager'){v.owner=u.id;continue}
  if(f.optional&&(x===''||x==null)){v[f.name]=['user_id','date','group_id','institute_id'].includes(f.name)?null:'';continue}
  if(x==null)fail(400,'Заполните поле «'+f.label+'»');x=String(x).trim();if(!x||x.length>(f.type==='textarea'?8000:200))fail(400,'Проверьте поле «'+f.label+'»');
@@ -61,7 +65,8 @@ export function installManagement(db,ctx){
  return v;
  }
  function hashPassword(x){const error=passwordError(x);if(error)fail(400,error);return hash(x)}
- function save(table,b,u){const schema=Object.hasOwn(schemas,table)?schemas[table]:null;if(!schema||!schema.roles.includes(u.role))fail(403,'Недостаточно прав');const id=b.id?integer(b.id,1,1000000):null,old=id?owned(table,id,u):null;if(schema.singleton&&id!==1)fail(400,'Редактируйте существующие настройки');let issued;if(table==='users'&&!old){b={...b,login:normalizeEmail(b.login),password:b.password||temporaryPassword()}}if(table==='users'&&b.password)issued={name:b.name,login:b.login,password:b.password};const v=validate(table,b,u,old);if(table==='users'&&v.password){if(!(v.email||old?.email))fail(400,'Сначала задайте email кнопкой «Сменить email-логин»');mail.requireReady()}return transaction(()=>{
+ function save(table,b,u){const schema=Object.hasOwn(schemas,table)?schemas[table]:null;if(!schema||!schema.roles.includes(u.role))fail(403,'Недостаточно прав');const id=b.id?integer(b.id,1,1000000):null,old=id?owned(table,id,u):null;if(schema.singleton&&id!==1)fail(400,'Редактируйте существующие настройки');let issued;if(table==='users'&&!old){b={...b,login:normalizeEmail(b.login),password:b.password||temporaryPassword()}}if(table==='users'&&b.password)issued={name:b.name,login:b.login,password:b.password};return transaction(()=>{
+ const v=validate(table,b,u,old);if(table==='users'&&v.password){if(!(v.email||old?.email))fail(400,'Сначала задайте email кнопкой «Сменить email-логин»');mail.requireReady()}
  const keys=Object.keys(v);let recordId=id;if(old){run(`UPDATE ${table} SET ${keys.map(k=>k+'=?').join(',')} WHERE id=?`,...keys.map(k=>v[k]),id)}else{recordId=Number(run(`INSERT INTO ${table}(${keys.join(',')}) VALUES(${keys.map(()=>'?').join(',')})`,...keys.map(k=>v[k])).lastInsertRowid)}
  if(table==='groups'&&old&&v.name!==old.name){run('UPDATE users SET grp=? WHERE grp=?',v.name,old.name);run('UPDATE lessons SET grp=? WHERE grp=?',v.name,old.name)}
  if(table==='users'&&old&&(v.password||v.role!==old.role||v.active!==old.active))run('DELETE FROM sessions WHERE user_id=?',id);

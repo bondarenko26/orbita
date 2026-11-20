@@ -20,6 +20,7 @@ export function installDeletion(db,{fail,academic}){
   }
   if(table==='groups'&&!restore&&(one('SELECT id FROM live_users WHERE group_id=?',r.id)||one('SELECT id FROM teaching_assignments WHERE group_id=? AND active=1',r.id)||one('SELECT id FROM live_lessons WHERE grp=?',r.name)))fail(409,'В группе есть аккаунты, занятия или действующие назначения. Сначала перенесите или удалите их, закройте назначения');
   if(restore&&['clubs','events'].includes(table)&&!one('SELECT id FROM live_users WHERE id=?',r.owner))fail(409,'Сначала восстановите ответственного');
+  if(restore&&table==='lessons'&&r.assignment_id&&!one("SELECT a.id FROM teaching_assignments a JOIN live_users t ON t.id=a.teacher_id WHERE a.id=? AND t.role='teacher' AND t.active=1",r.assignment_id))fail(409,'Сначала восстановите доступ преподавателя');
   if(restore&&table==='lessons'&&!one('SELECT id FROM live_groups WHERE name=?',r.grp))fail(409,'Сначала восстановите группу');
   if(restore&&table==='grades'&&!one('SELECT id FROM live_users WHERE id=?',r.user_id))fail(409,'Сначала восстановите студента');
  }
@@ -32,6 +33,7 @@ export function installDeletion(db,{fail,academic}){
   const [,table,action]=m,r=one(`SELECT * FROM ${table} WHERE id=?`,Number(b.id)||0);if(!r||!access(table,r,u))fail(404,'Запись не найдена');const restore=action==='restore';if(restore?!r.deleted_at:!!r.deleted_at)fail(409,'Запись уже изменена');check(table,r,restore,u);
   const now=restore?null:new Date().toISOString();db.exec('BEGIN IMMEDIATE');try{
    run(`UPDATE ${table} SET deleted_at=? WHERE id=?`,now,r.id);
+   if(table==='lessons')academic.syncLessonAssignment(r.assignment_id);
    if(table==='users'){run('DELETE FROM sessions WHERE user_id=?',r.id);if(one("SELECT name FROM sqlite_master WHERE type='table' AND name='mail_jobs'"))run("UPDATE mail_jobs SET state='cancelled',payload=NULL WHERE user_id=? AND state IN ('pending','sending')",r.id)}
    if(table==='grades'){run('INSERT INTO journal_history(actor,assignment_id,entity,record_id,old_json,new_json) VALUES(?,?,?,?,?,?)',u.id,r.assignment_id,'grades',r.id,JSON.stringify(r),JSON.stringify({...r,deleted_at:now}));run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',r.user_id,restore?'Оценка восстановлена':'Оценка удалена',r.subject)}
    run('INSERT INTO audit(actor,action,entity,record_id) VALUES(?,?,?,?)',u.id,action,table,r.id);db.exec('COMMIT');
