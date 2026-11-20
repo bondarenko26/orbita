@@ -427,21 +427,47 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
   grid-template-columns: minmax(0, 1fr);
 }
 #management-section .editor-grid > label { min-inline-size: 0; }
-#management-section input:is([type=date], [type=time], [type=datetime-local]) {
+/* The frame fills the column; the native picker has no padding to add to its width. */
+.temporal-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-inline-size: 0;
+  margin-block-start: 6px;
+  padding-inline: 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.temporal-control:focus-within {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.temporal-control > input {
+  box-sizing: border-box;
   display: block;
   inline-size: 100%;
   max-inline-size: 100%;
   min-inline-size: 0;
   min-block-size: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
   text-align: start;
 }
-#management-section input::-webkit-date-and-time-value {
+.temporal-control > input:focus-visible { outline: none; }
+.temporal-control > input::-webkit-date-and-time-value {
   min-inline-size: 0;
   margin-inline: 0;
   text-align: start;
 }
 @media (max-width: 720px), (pointer: coarse) {
-  #management-section input:is([type=date], [type=time], [type=datetime-local]) {
+  .temporal-control > input {
     font-size: max(16px, 1em);
   }
 }

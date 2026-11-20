@@ -31,6 +31,9 @@ function field(f,value,data,key){
  let control;if(options)control=`<select name="${f.name}" ${req}>${optional?option('','Не выбрано',value):f.type==='group_id'?option('','Выберите группу',value):''}${options.map(o=>Array.isArray(o)?option(o[0],o[1],value):option(o,o,value)).join('')}</select>`;
  else if(f.type==='textarea')control=`<textarea name="${f.name}" ${req} maxlength="8000">${esc(value)}</textarea>`;
  else control=`<input name="${f.name}" ${f.readonly?'readonly':''} type="${f.type}" value="${esc(value)}" ${req} ${f.type==='password'?'minlength="8" maxlength="14" autocomplete="new-password"':f.type==='number'?'min="1"':''}>`;
+ if(['date','time','datetime-local'].includes(f.type)){
+  control=`<span class="temporal-control">${control}</span>`;
+ }
  return `<label>${esc(f.label)}${control}</label>`;
 }
 function editor(entity,schema,row,data){const config=data.settings;const defaults={course:1,active:1,archived:0,enrollment_open:1,capacity:20,day:1,weekday:1,parity:'all',start:'09:00',end:'10:20',term_start:config?.semester_start||today(),term_end:config?.semester_end||today(),owner:actor.id};const values={...defaults,...row};
