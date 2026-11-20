@@ -492,7 +492,15 @@ h1, h2, h3, .service-copy strong, .day strong { font-weight:700; }
 .week-actions { gap: 4px; }
 .week-actions button { padding-inline: 12px; }
 .week-actions button[data-shift] { padding: 0; }
-.days { margin-bottom: 12px; max-width: 560px; }
+.days {
+  max-width: 560px;
+  margin-block: 16px;
+  scale: 1.08;
+}
+/* Leave room at both screen edges as the seven-column strip gets wider. */
+@media (min-width: 430px) and (max-width: 720px) {
+  .days { scale: 1.055; }
+}
 .day span { font-size:0.875rem; }
 .checkline { min-height: 32px; margin: 0 0 12px; }
 .lesson {
