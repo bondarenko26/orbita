@@ -112,10 +112,15 @@ async function render({keyboard = false, scrollTop = false} = {}) {
  if (pageChanged && page !== 'notices') refreshBell();
  const content = $('#content'), status = $('.view-status');
  const timetable = !pageChanged && page === 'schedule' && content.querySelector('.schedule-layout');
+ const clubPanel = !pageChanged && page === 'clubs' && content.querySelector('.club-panel');
  const fromContent = keyboard && document.activeElement && content.contains(document.activeElement);
  content.setAttribute('aria-busy', 'true');
  content.inert = pageChanged;
  if (timetable) previewSchedule(content, keyboard);
+ if (clubPanel) {
+  selectMode(content.querySelector('.mode-switch'), clubTab, keyboard);
+  clubPanel.inert = true;
+ }
  status.textContent = '';
  const loadingTimer = setTimeout(() => {
   if (v === version && lastShownPage) status.textContent = 'Загружаем…';
@@ -137,16 +142,21 @@ async function render({keyboard = false, scrollTop = false} = {}) {
    content.querySelector('.weekbar strong').textContent = result.weekLabel;
    content.querySelector('.agenda-list').outerHTML = `<div class="agenda-list">${result.agenda}</div>`;
    content.querySelector('.aside-card').innerHTML = result.summary;
+  } else if (clubPanel) {
+   clubPanel.innerHTML = result;
+   clubPanel.inert = false;
   } else {
-   content.innerHTML = view === schedule ? schedulePage(result) : result;
+   content.innerHTML = view === schedule ? schedulePage(result) : view === clubs ? clubsPage(result) : result;
    const days = content.querySelector('.days');
    if (days) {
     const indicator = days.querySelector('.day-drop');
     bindIndicator(indicator);
     positionIndicator(indicator, [...days.children].indexOf(days.querySelector('.active')), true, 'var(--day-gap)');
-    const modeDrop = content.querySelector('.mode-drop');
-    bindIndicator(modeDrop);
-    positionIndicator(modeDrop, mode === 'Сессия' ? 1 : 0, true);
+   }
+   const picker = content.querySelector('.mode-switch');
+   if (picker) {
+    bindIndicator(picker.querySelector('.mode-drop'));
+    selectMode(picker, view === clubs ? clubTab : mode, true);
    }
   }
   content.inert = false;
@@ -154,7 +164,7 @@ async function render({keyboard = false, scrollTop = false} = {}) {
   if (focusHeading) {
    const title = content.querySelector('h1');
    if (title) { title.tabIndex = -1; title.focus({preventScroll:true}); }
-   else content.querySelector('.schedule-modes [aria-pressed=true]')?.focus({preventScroll:true});
+   else content.querySelector('.mode-switch [aria-pressed=true]')?.focus({preventScroll:true});
   }
   lastShownPage = page;
   if (page === 'schedule') lastShownDate = selected;
@@ -230,12 +240,7 @@ function previewSchedule(content, keyboard) {
   else button.removeAttribute('aria-current');
   if (active) positionIndicator(strip.querySelector('.day-drop'), i, keyboard, 'var(--day-gap)');
  }
- positionIndicator(content.querySelector('.mode-drop'), mode === 'Сессия' ? 1 : 0, keyboard);
- for (const button of content.querySelectorAll('[data-mode]')) {
-  const active = button.dataset.mode === mode;
-  button.classList.toggle('active', active);
-  button.setAttribute('aria-pressed', String(active));
- }
+ selectMode(content.querySelector('.mode-switch'), mode, keyboard);
  // Leave the date controls and focus in place. Old lessons cannot receive a note for the new date.
  content.querySelector('.agenda-list').inert = true;
 }
@@ -274,15 +279,26 @@ async function schedule() {
  };
 }
 
+function modeSwitch(label, key, choices, selectedChoice) {
+ return `<div class="mode-switch" role="group" aria-label="${label}" data-switch="${key}">
+    ${choices.map(choice=>`<button data-${key}="${choice}" aria-pressed="${selectedChoice===choice}">${choice}</button>`).join('')}
+    <span class="mode-drop" aria-hidden="true"></span>
+    <span class="mode-labels" aria-hidden="true">${choices.map(choice=>`<span>${choice}</span>`).join('')}</span>
+   </div>`;
+}
+
+function selectMode(picker, choice, instant) {
+ for (const [i,button] of picker.querySelectorAll('button').entries()) {
+  const active = button.dataset[picker.dataset.switch] === choice;
+  button.setAttribute('aria-pressed', String(active));
+  if (active) positionIndicator(picker.querySelector('.mode-drop'), i, instant);
+ }
+}
+
 function schedulePage({weekLabel, agenda, summary}) {
  const monday = weekStart(selected);
- const modes = ['Пары','Сессия'];
  return `<div class="schedule-layout"><section aria-label="Расписание">
-   <div class="schedule-modes" role="group" aria-label="Вид расписания">
-    ${modes.map(m=>`<button data-mode="${m}" aria-pressed="${mode===m}">${m}</button>`).join('')}
-    <span class="mode-drop" aria-hidden="true"></span>
-    <span class="mode-labels" aria-hidden="true">${modes.map(m=>`<span>${m}</span>`).join('')}</span>
-   </div>
+   ${modeSwitch('Вид расписания','mode',['Пары','Сессия'],mode)}
    <div class="weekbar"><div><strong>${esc(weekLabel)}</strong><small>${weekRange(monday)}</small></div><div class="week-actions"><button data-action="today">Сегодня</button><button data-shift="-7" aria-label="Предыдущая неделя">‹</button><button data-shift="7" aria-label="Следующая неделя">›</button></div></div>
    <div class="days">${dayButtons(monday)}<span class="day-drop" aria-hidden="true"></span></div>
    <label class="checkline"><input type="checkbox" id="showClubs" ${showClubs?'checked':''}>Показывать мои секции</label>
@@ -437,7 +453,12 @@ async function clubs(){
  let body;if(clubTab==='Сборные')body='<h2 class="section-title">Сборные университета</h2><div class="grid">'+(eventCards('Сборная')||empty('Сборные пока не добавлены','Здесь появятся команды университета.'))+'</div><h2 class="section-title">Соревнования</h2><div class="grid">'+(eventCards('Соревнование')||empty('Соревнований пока нет','Здесь появятся даты и места проведения.'))+'</div>';
  else if(clubTab==='Кружки')body='<div class="grid">'+(cs.map(clubCard).join('')||empty('Занятия пока не добавлены','Здесь появятся спортивные секции и творческие кружки.'))+'</div>';
  else {const mine=cs.filter(c=>c.membership==='Вы приняты'),pending=cs.filter(c=>c.membership&&c.membership!=='Вы приняты');body='<div class="grid">'+(mine.map(clubCard).join('')||empty('Выберите занятие по душе','После подтверждения записи оно появится здесь и в расписании.','<button data-clubtab="Кружки">Найти занятие →</button>'))+'</div>'+(pending.length?'<h2 class="section-title">Мои заявки</h2><div class="grid">'+pending.map(clubCard).join('')+'</div>':'')}
- return backToExtras()+heading('Секции','Занятия, команды и события кампуса')+`<nav class="section-tabs section-tabs-three" aria-label="Разделы секций">${['Мои занятия','Сборные','Кружки'].map(t=>`<button data-clubtab="${t}" aria-pressed="${t===clubTab}" class="${t===clubTab?'active':''}">${t}</button>`).join('')}</nav>`+body;
+ return body;
+}
+function clubsPage(body) {
+ return backToExtras()+heading('Секции','Занятия, команды и события кампуса')
+  +modeSwitch('Разделы секций','clubtab',['Мои занятия','Сборные','Кружки'],clubTab)
+  +`<div class="club-panel">${body}</div>`;
 }
 const backToProfile = () => '<button class="back-link" data-page="profile">← Профиль</button>';
 const profileRoles = {student:'Студент', teacher:'Преподаватель', admin:'Администратор', manager:'Руководитель секций', staff:'Сотрудник деканата'};

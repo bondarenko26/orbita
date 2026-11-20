@@ -428,11 +428,11 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 h1, h2, h3, .service-copy strong, .day strong { font-weight:700; }
 .side-label, .eyebrow { text-transform: none; letter-spacing: 0; font-size:0.875rem; }
 .sidebar .nav button { padding: 10px 12px; border-radius: 8px; }
-.schedule-modes {
+.mode-switch {
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
+  grid-template-columns: repeat(var(--mode-count, 2), minmax(0,1fr));
   padding: 4px;
   margin-bottom: 16px;
   border-radius: 999px;
@@ -440,7 +440,7 @@ h1, h2, h3, .service-copy strong, .day strong { font-weight:700; }
   font-size: 1.0625rem;
   font-weight: 700;
 }
-.schedule-modes button {
+.mode-switch button {
   min-height: 44px;
   padding: 6px;
   border: 0;
@@ -463,22 +463,27 @@ h1, h2, h3, .service-copy strong, .day strong { font-weight:700; }
   border-radius: 999px;
   background: var(--ink);
 }
-.schedule-modes { overflow: hidden; }
-.schedule-modes button:focus-visible { outline-offset: -3px; outline-color: var(--accent); }
+.mode-switch { overflow: hidden; }
+.mode-switch[data-switch=clubtab] { --mode-count: 3; font-size: 1rem; }
+.mode-labels > span { padding-inline: 6px; }
+.mode-switch button:focus-visible { outline-offset: -3px; outline-color: var(--accent); }
 .mode-labels {
   position: absolute;
   inset: 4px;
   display: grid;
-  grid-template-columns: repeat(2,minmax(0,1fr));
+  grid-template-columns: repeat(var(--mode-count, 2),minmax(0,1fr));
   align-items: center;
   text-align: center;
   color: var(--bg);
   pointer-events: none;
-  clip-path: inset(0 50% 0 0 round 999px);
+  --column: 0;
+  --step: calc(100% / var(--mode-count, 2));
+  clip-path: inset(0 calc(100% - (var(--column) + 1) * var(--step)) 0 calc(var(--column) * var(--step)) round 999px);
 }
-.schedule-modes button:nth-child(2)[aria-pressed=true] ~ .mode-labels {
-  clip-path: inset(0 0 0 50% round 999px);
+.mode-switch button:nth-child(2)[aria-pressed=true] ~ .mode-labels {
+  --column: 1;
 }
+.mode-switch button:nth-child(3)[aria-pressed=true] ~ .mode-labels { --column: 2; }
 @media (prefers-reduced-motion:no-preference) {
   .mode-drop:not([data-instant]) + .mode-labels { transition: clip-path 250ms var(--ease-out); }
 }
