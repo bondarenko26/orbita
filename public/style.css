@@ -418,7 +418,17 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
   }
 }
 @keyframes portal-content-in { from { opacity: .84; transform: translateY(3px); } }
-.management-tabs { position: relative; isolation: isolate; }
+.management-tabs { display: block; }
+.management-track {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-wrap: inherit;
+  gap: inherit;
+}
+@media (max-width: 720px) {
+  .management-track { width: max-content; min-width: 100%; }
+}
 .management-tabs button, .management-tabs button.active {
   background: transparent;
   color: var(--ink);
