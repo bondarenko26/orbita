@@ -418,6 +418,27 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
   }
 }
 @keyframes portal-content-in { from { opacity: .84; transform: translateY(3px); } }
+.management-tabs { position: relative; isolation: isolate; }
+.management-tabs button, .management-tabs button.active {
+  background: transparent;
+  color: var(--ink);
+}
+.management-tabs management-indicator {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 34%, var(--panel));
+  clip-path: inset(50%);
+}
+.management-tabs button.active { border-color: var(--accent); }
+@media (prefers-reduced-motion:no-preference) {
+  management-indicator:not([data-instant]) { transition: clip-path 250ms var(--ease-out); }
+  #management-section[data-arrival=tab] { animation: portal-content-in 150ms var(--ease-out); }
+}
+@media (forced-colors:active) {
+  .management-tabs button[aria-pressed=true] { outline: 2px solid Highlight; }
+}
 @keyframes agenda-in { from { opacity: .8; transform: translateX(var(--agenda-offset)); } }
 @media (prefers-reduced-motion: reduce) {
   .bell-button .bell-layer { transform: none; transition: opacity 100ms linear; }

@@ -101,7 +101,7 @@ function navButton([id,icon,label]) {
 }
 const heading=(title,sub,extra='')=>`<div class="heading"><div><h1>${title}</h1><p>${sub}</p></div>${extra}</div>`;
 const empty=(title,sub,action='')=>`<div class="empty"><div class="symbol">◌</div><h3>${title}</h3><p>${sub}</p>${action}</div>`;
-async function render({keyboard = false, scrollTop = false} = {}) {
+async function render({keyboard = false, scrollTop = false, managementTab = false} = {}) {
  disposeBlocks?.();disposeBlocks=null;
  if(!user)return login();
  if(user.must_change_password)return forcePassword();
@@ -113,10 +113,12 @@ async function render({keyboard = false, scrollTop = false} = {}) {
  const content = $('#content'), status = $('.view-status');
  const timetable = !pageChanged && page === 'schedule' && content.querySelector('.schedule-layout');
  const clubPanel = !pageChanged && page === 'clubs' && content.querySelector('.club-panel');
+ const editorPanel = managementTab && !pageChanged && page === 'manage' && content.querySelector('#management-section');
  const fromContent = keyboard && document.activeElement && content.contains(document.activeElement);
  content.setAttribute('aria-busy', 'true');
  content.inert = pageChanged;
  if (timetable) previewSchedule(content, keyboard);
+ if (editorPanel) editorPanel.inert = true;
  if (clubPanel) {
   selectMode(content.querySelector('.mode-switch'), clubTab, keyboard);
   clubPanel.inert = true;
@@ -127,8 +129,9 @@ async function render({keyboard = false, scrollTop = false} = {}) {
  }, 240);
  try {
   const view=({blocks:()=>'<div class="blocks-root" data-blocks></div>',schedule,grades,extras,dating,datingAdmin:dating,contacts,campus,support,supportInbox,teachers,teacherCard,requests,clubs,profile,personal,appearance,emailSettings,passwordSettings,notices,manage,teaching,trash,mailStatus})[page]||schedule;
-  const result = await view();
+  let result = await view();
   if (v !== version) return;
+  if (view === manage) result = backToProfile() + managementView(result,user,api);
 
   const focused = document.activeElement;
   const focusHeading = fromContent && pageChanged && (focused === document.body || content.contains(focused));
@@ -145,6 +148,15 @@ async function render({keyboard = false, scrollTop = false} = {}) {
   } else if (clubPanel) {
    clubPanel.innerHTML = result;
    clubPanel.inert = false;
+  } else if (editorPanel) {
+   const template = document.createElement('template');
+   template.innerHTML = result;
+   const next = template.content.querySelector('#management-section');
+   const oldNav = content.querySelector('.management-tabs'), newNav = template.content.querySelector('.management-tabs');
+   if (sameManagementTabs(oldNav,newNav)) {
+    if (!keyboard) next.dataset.arrival = 'tab';
+    editorPanel.replaceWith(next);
+   } else content.replaceChildren(template.content);
   } else {
    content.innerHTML = view === schedule ? schedulePage(result) : view === clubs ? clubsPage(result) : result;
    const days = content.querySelector('.days');
@@ -508,7 +520,11 @@ const field=(name,label,type='text',value='')=>`<label>${label}<input name="${na
 const select=(name,label,options)=>`<label>${label}<select name="${name}">${options.map(o=>{let [v,n]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}">${esc(n)}</option>`}).join('')}</select></label>`;
 const form=(title,endpoint,fields)=>`<details class="card"><summary>${title}</summary><form data-endpoint="${endpoint}">${fields}<button class="primary">Сохранить</button></form></details>`;
 async function teaching(){return teachingView(api)}
-async function manage(){return backToProfile()+managementView(await api('manage'),user,api)}
+function sameManagementTabs(a,b) {
+ const oldButtons = a.querySelectorAll('button'), newButtons = b.querySelectorAll('button');
+ return oldButtons.length === newButtons.length && Array.from(oldButtons).every((button,i)=>button.isEqualNode(newButtons[i]));
+}
+function manage(){return api('manage')}
 function modal(title,fields,onSubmit,actionLabel='Сохранить'){$('#modal-content').innerHTML=`<h2>${title}</h2><form id="modal-form">${fields}<p class="error" role="alert"></p><div class="form-actions"><button type="button" data-action="close">Отмена</button><button class="primary">${esc(actionLabel)}</button></div></form>`;$('#modal').showModal();$('#modal-form').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('.primary');b.disabled=true;try{const result=await onSubmit(Object.fromEntries(new FormData(e.target)));$('#modal').close();toast(result?.mail_queued?'Временный пароль поставлен в очередь отправки':actionLabel==='Удалить'?'Запись удалена':'Сохранено');await render()}catch(e){$('#modal-form .error').textContent=e.message}finally{b.disabled=false}}}
 document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
  const keyboard=e.detail===0;
@@ -524,7 +540,9 @@ document.addEventListener('change',e=>{if(e.target.id==='showClubs'){showClubs=e
 document.addEventListener('submit',async e=>{if(!e.target.dataset.endpoint)return;e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;try{const result=await api(e.target.dataset.endpoint,Object.fromEntries(new FormData(e.target)));toast('Сохранено');await render();if(result.mail_queued)toast('Временный пароль поставлен в очередь отправки на email')}catch(e){toast(e.message)}finally{btn.disabled=false}});
 try{user=await api('me');if(['staff','manager'].includes(user.role))page='requests';await render()}catch{login()}
 
-document.addEventListener('management-tab-change',()=>{if(page==='manage')render()});
+document.addEventListener('management-tab-change',event=>{
+ if(page==='manage') render({keyboard:event.detail.keyboard, managementTab:true});
+});
 let inboxBusy=false;
 async function refreshInbox(){
  if(inboxBusy||document.hidden||!user||!['staff','admin','manager'].includes(user.role)||!$('[data-live-inbox]'))return;

@@ -30,9 +30,43 @@ function requests(data){return `<div class="row"><h2>Заявки студент
 function memberships(data){return '<div class="row"><h2>Запись в секции · '+data.memberships.length+'</h2><button data-action="refresh">Обновить</button></div><p data-inbox-sync class="muted">Заявки на ваши секции обновляются автоматически.</p><div data-live-inbox="memberships" class="list manage-section">'+data.memberships.map(m=>`<details class="card" data-inbox-id="${m.id}"><summary>${esc(m.name)} · ${esc(m.status)}<span class="record-sub">${esc(m.title)}</span></summary><form data-endpoint="manage/memberships"><input name="id" type="hidden" value="${m.id}">${field({name:'status',label:'Статус',options:['На рассмотрении','Вы приняты','Набор закрыт']},m.status,data)}<button class="primary">Сохранить и уведомить</button></form></details>`).join('')+(data.memberships.length?'':'<p class="muted" data-inbox-empty>Заявок на ваши секции пока нет.</p>')+'</div>'}
 function view(data){const tabs=Object.entries(data.entities).map(([k,v])=>[k,v.title]);if(data.entities.users)tabs.push(['import','Импорт Excel']);if(data.entities.lessons)tabs.push(['exceptions','Переносы'],['requests','Заявки']);if(data.entities.clubs)tabs.push(['memberships','Записи в секции']);if(data.entities.users)tabs.push(['mail','Отправка писем']);if(actor.role==='admin')tabs.push(['audit','Журнал действий']);if(!tabs.some(t=>t[0]===current))current=tabs[0][0];let body;
  if(current==='mail')body='<h2>Отправка писем</h2><button data-page="mailStatus">Открыть состояние отправки</button>';else if(current==='import')body=importView(callApi);else if(current==='exceptions')body=exceptions(data);else if(current==='requests')body=requests(data);else if(current==='memberships')body=memberships(data);else if(current==='audit')body=`<h2>Последние 100 действий</h2><div class="list manage-section">${data.audit.map(a=>`<article class="card"><strong>${esc(a.name)}</strong><p>${esc(({create:'Создание',update:'Изменение',status:'Изменение статуса',exception:'Перенос или отмена',import:'Импорт аккаунта',password_reset:'Выдан временный пароль',password_change:'Смена пароля',email_change:'Смена email',delete:'Удаление',restore:'Восстановление'})[a.action]||a.action)} · ${esc(data.entities[a.entity]?.title||({requests:'Заявка',memberships:'Запись в секцию'})[a.entity]||a.entity)} № ${a.record_id}</p><small>${esc(a.created)} UTC</small></article>`).join('')||'<p>Действий пока нет</p>'}</div>`;else {const schema=data.entities[current];body=`<div class="row"><h2>${esc(schema.title)}</h2><span class="pill">${schema.rows.length} записей</span></div>${!schema.singleton?`<details class="card create-card"><summary>＋ Добавить</summary>${editor(current,schema,null,data)}</details><label>Найти запись<input id="management-search" type="search" placeholder="Название, группа или имя"></label>`:''}<div class="list manage-section">${schema.rows.map(r=>`<details class="card managed-record" data-search="${esc((label(r,current,data)+' '+sub(r,current)).toLowerCase())}"><summary>${esc(label(r,current,data))}<span class="record-sub">${esc(sub(r,current))}</span></summary>${editor(current,schema,r,data)}</details>`).join('')||'<p class="muted">Записей пока нет. Создайте первую.</p>'}</div>`}
- return `<div class="heading"><div><h1>Управление</h1><p>НИУ МГСУ · данные заполняются ответственными сотрудниками</p>${actor.role==='staff'&&!data.scopes.length?'<p class="error">Администратор пока не назначил вам институт. Обратитесь к нему для выдачи прав.</p>':''}</div></div><nav class="management-tabs" aria-label="Разделы управления">${tabs.map(([k,v])=>`<button data-manage-tab="${k}" class="${current===k?'active':''}">${esc(v)}</button>`).join('')}</nav><section id="management-section">${body}</section>`}
+ return `<div class="heading"><div><h1>Управление</h1><p>НИУ МГСУ · данные заполняются ответственными сотрудниками</p>${actor.role==='staff'&&!data.scopes.length?'<p class="error">Администратор пока не назначил вам институт. Обратитесь к нему для выдачи прав.</p>':''}</div></div><nav class="management-tabs" aria-label="Разделы управления">${tabs.map(([k,v])=>`<button aria-controls="management-section" aria-pressed="${k===current}" data-manage-tab="${k}" class="${current===k?'active':''}">${esc(v)}</button>`).join('')}<management-indicator aria-hidden="true"></management-indicator></nav><section id="management-section">${body}</section>`}
 export function managementView(data,user,api){snapshot=data;actor=user;callApi=api;return view(data)}
-document.addEventListener('click',e=>{const b=e.target.closest('[data-manage-tab]');if(!b||!snapshot)return;current=b.dataset.manageTab;document.dispatchEvent(new CustomEvent('management-tab-change'))});
+// Management tabs wrap and have different widths. Clip one surface to the selected button.
+class ManagementIndicator extends HTMLElement {
+ connectedCallback() {
+  this.observer = new ResizeObserver(() => this.align(true));
+  this.observer.observe(this.parentElement);
+  for (const button of this.parentElement.querySelectorAll('button')) this.observer.observe(button);
+  this.align(true);
+ }
+ disconnectedCallback() { this.observer?.disconnect(); }
+ align(instant) {
+  const button = this.parentElement?.querySelector('[aria-pressed=true]');
+  if (!button) return;
+  const x = button.offsetLeft, y = button.offsetTop;
+  const shape = `inset(${y}px calc(100% - ${x+button.offsetWidth}px) calc(100% - ${y+button.offsetHeight}px) ${x}px round 16px)`;
+  if (shape === this.shape) return;
+  this.shape = shape;
+  this.toggleAttribute('data-instant', instant);
+  this.style.clipPath = shape;
+ }
+}
+customElements.define('management-indicator', ManagementIndicator);
+
+document.addEventListener('click',event=>{
+ const button = event.target.closest('[data-manage-tab]');
+ if (!button || !snapshot || button.dataset.manageTab === current) return;
+ current = button.dataset.manageTab;
+ const nav = button.closest('.management-tabs');
+ for (const tab of nav.querySelectorAll('button')) {
+  tab.classList.toggle('active', tab === button);
+  tab.setAttribute('aria-pressed', String(tab === button));
+ }
+ const keyboard = event.detail === 0;
+ nav.querySelector('management-indicator').align(keyboard);
+ document.dispatchEvent(new CustomEvent('management-tab-change',{detail:{keyboard}}));
+});
 document.addEventListener('input',e=>{if(e.target.id!=='management-search')return;const q=e.target.value.toLowerCase();document.querySelectorAll('.managed-record').forEach(r=>r.hidden=!r.dataset.search.includes(q))});
 
 export function staffRequestsView(data,user){
