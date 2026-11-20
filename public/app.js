@@ -60,17 +60,26 @@ function shell(instant) {
     <div id="content" aria-live="polite"><p class="loading">Загружаем…</p></div><p class="banner">Конкурсный прототип · Все данные вымышлены</p></main>
    <nav class="mobile-nav" aria-label="Основные разделы">${buttons}<span class="nav-drop" aria-hidden="true"></span></nav>
   </div>`;
-  const drop = $('.nav-drop');
-  drop.ontransitionrun = drop.ontransitionend = drop.ontransitioncancel = event => {
-   if (event.target === drop && event.propertyName === 'transform' && !event.pseudoElement) {
-    drop.classList.toggle('moving', event.type === 'transitionrun');
-   }
-  };
+  bindIndicator($('.nav-drop'));
   instant = true;
  } else if (lastShownPage === 'appearance') {
   applyAppearance(user);
  }
  updateNavigation(instant);
+}
+
+function bindIndicator(drop) {
+ drop.ontransitionrun = drop.ontransitionend = drop.ontransitioncancel = event => {
+  if (event.target === drop && event.propertyName === 'transform' && !event.pseudoElement) {
+   drop.classList.toggle('moving', event.type === 'transitionrun');
+  }
+ };
+}
+
+function positionIndicator(drop, column, instant, gap = '0px') {
+ if (instant) drop.setAttribute('data-instant', '');
+ else drop.removeAttribute('data-instant');
+ drop.style.transform = `translateX(calc(${column * 100}% + ${column} * ${gap}))`;
 }
 
 function updateNavigation(instant) {
@@ -82,10 +91,8 @@ function updateNavigation(instant) {
   else button.removeAttribute('aria-current');
  });
  const drop = $('.nav-drop');
- if (instant) drop.setAttribute('data-instant', '');
- else drop.removeAttribute('data-instant');
  const column = navigation().findIndex(([id]) => id === section);
- if (column >= 0) drop.style.transform = `translateX(${column * 100}%)`;
+ if (column >= 0) positionIndicator(drop, column, instant);
 }
 
 function navButton([id,icon,label]) {
@@ -132,6 +139,12 @@ async function render({keyboard = false, scrollTop = false} = {}) {
    content.querySelector('.aside-card').innerHTML = result.summary;
   } else {
    content.innerHTML = view === schedule ? schedulePage(result) : result;
+   const days = content.querySelector('.days');
+   if (days) {
+    const indicator = days.querySelector('.day-drop');
+    bindIndicator(indicator);
+    positionIndicator(indicator, [...days.children].indexOf(days.querySelector('.active')), true, 'var(--day-gap)');
+   }
   }
   content.inert = false;
   if (scrollTop) window.scrollTo({top:0, behavior:'instant'});
@@ -201,21 +214,22 @@ function previewSchedule(content, keyboard) {
  const strip = content.querySelector('.days'), monday = weekStart(selected);
  const previousMonday = strip.firstElementChild.dataset.date;
  if (previousMonday !== monday) {
-  if (keyboard) strip.removeAttribute('data-slide');
-  else strip.dataset.slide = monday > previousMonday ? 'later' : 'earlier';
-  strip.innerHTML = dayButtons(monday);
   content.querySelector('.weekbar small').textContent = weekRange(monday);
   content.querySelector('.weekbar strong').textContent = 'Учебная неделя';
- } else {
-  const current = today();
-  for (const button of strip.children) {
-   const active = button.dataset.date === selected, isToday = button.dataset.date === current;
-   button.classList.toggle('active', active);
-   button.classList.toggle('today', isToday);
-   button.setAttribute('aria-pressed', String(active));
-   if (isToday) button.setAttribute('aria-current', 'date');
-   else button.removeAttribute('aria-current');
+ }
+ const current = today();
+ for (const [i,button] of strip.querySelectorAll('.day').entries()) {
+  if (previousMonday !== monday) {
+   button.dataset.date = shift(monday, i);
+   button.querySelector('strong').textContent = Number(button.dataset.date.slice(-2));
   }
+  const active = button.dataset.date === selected, isToday = button.dataset.date === current;
+  button.classList.toggle('active', active);
+  button.classList.toggle('today', isToday);
+  button.setAttribute('aria-pressed', String(active));
+  if (isToday) button.setAttribute('aria-current', 'date');
+  else button.removeAttribute('aria-current');
+  if (active) positionIndicator(strip.querySelector('.day-drop'), i, keyboard, 'var(--day-gap)');
  }
  content.querySelector('.schedule-cover .heading p').textContent = scheduleSubtitle();
  for (const button of content.querySelectorAll('[data-mode]')) {
@@ -267,7 +281,7 @@ function schedulePage({weekLabel, agenda, summary}) {
   <div class="schedule-layout"><section>
    <div class="segmented">${['Пары','Сессия'].map(m=>`<button data-mode="${m}" class="${mode===m?'active':''}" aria-pressed="${mode===m}">${m}</button>`).join('')}</div>
    <div class="weekbar"><div><strong>${esc(weekLabel)}</strong><small>${weekRange(monday)}</small></div><div class="week-actions"><button data-action="today">Сегодня</button><button data-shift="-7" aria-label="Предыдущая неделя">‹</button><button data-shift="7" aria-label="Следующая неделя">›</button></div></div>
-   <div class="days">${dayButtons(monday)}</div>
+   <div class="days">${dayButtons(monday)}<span class="day-drop" aria-hidden="true"></span></div>
    <label class="checkline"><input type="checkbox" id="showClubs" ${showClubs?'checked':''}>Показывать мои секции</label>
    <div class="agenda-list">${agenda}</div></section>
    <aside class="aside"><div class="aside-card">${summary}</div><div class="aside-card"><h3>Кружки и секции</h3><p>Расписание занятий и запись в кружки.</p><button class="link-button" data-page="clubs" data-section="Кружки">Найти кружок</button></div><div class="aside-card"><h3>Справки</h3><p>Закажи справку и следи за её готовностью прямо здесь.</p><button class="link-button" data-page="requests">Перейти к справкам</button></div></aside>
@@ -393,7 +407,7 @@ async function extras(){
  ].join('');
  const coach=user.role==='manager'?'<h2 class="services-label">Управление секциями</h2><div class="services-grid">'+serviceCard('requests','clubs','Записи в секции','Заявки на ваши занятия')+'</div>':'';
  const leisure=serviceCard('blocks','blocks','Игра Блоки','Собирай линии и ставь рекорды')+(user.role==='student'?serviceCard('dating','heart','Знакомства','Найти друзей и компанию в МГСУ · 18+'):user.role==='admin'?serviceCard('datingAdmin','heart','Модерация знакомств','Жалобы, спорные анкеты и пересмотр'):'');
- return '<h1>Разное</h1><h2 class="services-label">Учёба</h2><div class="services-grid">'+study+'</div>'+coach+(leisure?'<h2 class="services-label">Развлечения</h2><div class="services-grid">'+leisure+'</div>':'');
+ return '<div class="extras-directory"><h1>Разное</h1><h2 class="services-label">Учёба</h2><div class="services-grid">'+study+'</div>'+coach+(leisure?'<h2 class="services-label">Развлечения</h2><div class="services-grid">'+leisure+'</div>':'')+'</div>';
 }
 const admissionsSource='https://mgsu.ru/postupayushchim/Kontakty/';
 const universityContacts=[
