@@ -633,7 +633,12 @@ h1, h2, h3, .service-copy strong, .day strong { font-weight:700; }
   .extras-directory .services-grid .service-card:hover { border-color: var(--accent); }
 }
 @media (max-width: 720px) {
-  .days { --day-gap: 3px; --day-radius: 16px; }
+  .days {
+    --day-gap: 1px;
+    --day-radius: 16px;
+    /* Six narrower gaps free up 6px at each end without resizing the dates. */
+    padding-inline: 6px;
+  }
   .extras-directory .services-grid { gap: 10px; }
   .extras-directory .services-grid :is(.service-card, .service-card:last-child:nth-child(odd)) { padding: 13px; }
 }
