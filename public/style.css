@@ -223,16 +223,11 @@ body[data-custom-accent=yes] .mobile-nav button.active{color:var(--accent)}
  .appearance-actions button{flex:1 1 160px}
 }
 /* The cover uses the campus footprint as the visual signature of the timetable. */
-.schedule-cover{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:flex-end;min-height:148px;margin-bottom:24px;padding:26px 30px;border:1px solid var(--rule);border-radius:20px;background:var(--cover)}
-.schedule-cover::before,.login-drawing::before{position:absolute;content:"";inset:0;z-index:-1;background-image:linear-gradient(to right,var(--rule) 1px,transparent 1px),linear-gradient(var(--rule) 1px,transparent 1px);background-size:18px 18px;opacity:.22;mask-image:linear-gradient(90deg,transparent 20%,black 78%)}
+.login-drawing::before{position:absolute;content:"";inset:0;z-index:-1;background-image:linear-gradient(to right,var(--rule) 1px,transparent 1px),linear-gradient(var(--rule) 1px,transparent 1px);background-size:18px 18px;opacity:.22;mask-image:linear-gradient(90deg,transparent 20%,black 78%)}
 .campus-drawing{color:var(--drawing);pointer-events:none}
-.schedule-cover .campus-drawing{position:absolute;z-index:-1;right:0;top:50%;width:51%;height:140%;transform:translateY(-50%)}
 .drawing-volume{fill:var(--drawing-roof)}
 .drawing-detail{opacity:.8;stroke-width:.68}
 .drawing-site{opacity:.77;stroke-dasharray:3 2}
-.schedule-cover .heading{margin:0;width:54%;align-items:flex-end}
-.schedule-cover h1{font-size:clamp(2.15rem,4vw,3.3rem);font-weight:720;letter-spacing:-.052em;line-height:1.07}
-.schedule-cover p{font-size:.95rem;margin-top:10px}
 .login-drawing{isolation:isolate;position:relative;margin:0 0 24px;height:100px;background:var(--cover);border-block:1px solid var(--rule);overflow:hidden}
 .login-drawing .campus-drawing{width:100%;height:100%;display:block}
 .login .brand{margin-bottom:24px}
@@ -285,18 +280,13 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 .theme-choice:has(:checked) .sample-name b{visibility:visible}
 .appearance-preview{border-radius:16px;background:var(--panel)}
 @media(max-width:720px){
- .schedule-cover{min-height:114px;padding:17px 15px;margin-bottom:16px;border-radius:16px}
- .schedule-cover .heading{width:78%}
- .schedule-cover h1{font-size:clamp(1.85rem,8.5vw,2.6rem)}
- .schedule-cover p{font-size:0.875rem;max-width:26ch;line-height:1.36}
- .schedule-cover .campus-drawing{right:-9%;width:56%;height:124%;mask-image:linear-gradient(90deg,transparent,black 40%)}
  .top{margin-bottom:15px}
  .lesson{padding:17px 14px;grid-template-columns:max-content minmax(0,1fr);gap:14px}
  .days{gap:1px}.day{padding:8px 0 10px}
  .theme-samples{gap:7px}.theme-sample{padding:7px}
 }
 @media(prefers-reduced-motion:no-preference){
- body,.schedule-cover,.card,.mobile-nav,.service-card,.appearance-preview,.campus-drawing{transition:background-color 180ms ease,color 180ms ease,border-color 180ms ease}
+ body,.card,.mobile-nav,.service-card,.appearance-preview,.campus-drawing{transition:background-color 180ms ease,color 180ms ease,border-color 180ms ease}
  .theme-sample,.day,.nav button,.mobile-nav button,.segmented button{transition:background-color 130ms,border-color 130ms,transform 130ms}
  .theme-choice:active .theme-sample,.day:active,.segmented button:active{transform:scale(.97)}
  dialog[open]{animation:portal-dialog-in 160ms ease-out}
@@ -410,9 +400,9 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 }
 @media(prefers-reduced-motion:no-preference) {
   .bell-layer { transition: opacity 150ms ease, transform 160ms var(--ease-out); }
-  :is(.mobile-nav .nav-drop, .day-drop):not([data-instant]) { transition: transform 250ms var(--ease-out); }
-  :is(.nav-drop, .day-drop)::before { transition: transform 120ms var(--ease-in-out); }
-  :is(.nav-drop, .day-drop).moving::before { transform: scale(1.08, .97); }
+  :is(.mobile-nav .nav-drop, .day-drop, .mode-drop):not([data-instant]) { transition: transform 250ms var(--ease-out); }
+  :is(.nav-drop, .day-drop, .mode-drop)::before { transition: transform 120ms var(--ease-in-out); }
+  :is(.nav-drop, .day-drop, .mode-drop).moving::before { transform: scale(1.08, .97); }
   .mobile-nav button, .mobile-nav .icon { transition: color 130ms ease, transform 130ms var(--ease-out); }
   .mobile-nav button:active .icon { transform: scale(.96); }
   .week-actions button, .primary, .section-tabs button, .service-card {
@@ -438,37 +428,59 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 h1, h2, h3, .service-copy strong, .day strong { font-weight:700; }
 .side-label, .eyebrow { text-transform: none; letter-spacing: 0; font-size:0.875rem; }
 .sidebar .nav button { padding: 10px 12px; border-radius: 8px; }
-.schedule-cover {
-  min-height: 128px;
-  padding: 24px;
-  background: var(--cover);
-  border: 0;
-  border-bottom: 1px solid var(--rule);
-  border-radius: 12px 12px 0 0;
-}
-.schedule-cover h1 { font-weight:700; letter-spacing: -.04em; }
-.schedule-cover .campus-drawing { right: 0; height: 112%; }
-.schedule-cover::before { background-size: 20px 20px; opacity: .16; }
-.schedule-layout .segmented {
-  padding: 0;
-  gap: 24px;
+.schedule-modes {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  padding: 4px;
   margin-bottom: 16px;
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+.schedule-modes button {
+  min-height: 44px;
+  padding: 6px;
   border: 0;
-  border-radius: 0;
-  border-bottom: 1px solid var(--line);
+  border-radius: inherit;
   background: transparent;
+  color: var(--muted);
+  font: inherit;
 }
-.schedule-layout .segmented button {
-  flex: none;
-  padding: 8px 4px;
-  border-radius: 0;
-  font-size: .9375rem;
-  font-weight:700;
+.mode-drop {
+  position: absolute;
+  grid-area: 1 / 1 / 2 / 2;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
 }
-.schedule-layout .segmented button.active {
-  color: var(--ink);
-  background: transparent;
-  box-shadow: inset 0 -2px var(--accent);
+.mode-drop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--ink);
+}
+.schedule-modes { overflow: hidden; }
+.schedule-modes button:focus-visible { outline-offset: -3px; outline-color: var(--accent); }
+.mode-labels {
+  position: absolute;
+  inset: 4px;
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  align-items: center;
+  text-align: center;
+  color: var(--bg);
+  pointer-events: none;
+  clip-path: inset(0 50% 0 0 round 999px);
+}
+.schedule-modes button:nth-child(2)[aria-pressed=true] ~ .mode-labels {
+  clip-path: inset(0 0 0 50% round 999px);
+}
+@media (prefers-reduced-motion:no-preference) {
+  .mode-drop:not([data-instant]) + .mode-labels { transition: clip-path 250ms var(--ease-out); }
 }
 .weekbar {
   display: grid;
@@ -538,10 +550,6 @@ h1, h2, h3, .service-copy strong, .day strong { font-weight:700; }
 @media (max-width: 720px) {
   .main { padding: 16px 16px calc(80px + env(safe-area-inset-bottom, 0px)); }
   .top { margin-bottom: 12px; padding-bottom: 8px; }
-  .schedule-cover { padding: 8px 16px; min-height: 88px; margin-bottom: 4px; }
-  .schedule-cover .heading { width: 72%; }
-  .schedule-cover p { margin-top: 4px; max-width: none; min-block-size: 2.72em; }
-  .schedule-cover .campus-drawing { right: -5%; width: 52%; }
   .weekbar strong { font-size:0.875rem; }
   .weekbar small { font-size:0.875rem; }
   .days { gap: 3px; }

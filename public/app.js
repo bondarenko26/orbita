@@ -144,6 +144,9 @@ async function render({keyboard = false, scrollTop = false} = {}) {
     const indicator = days.querySelector('.day-drop');
     bindIndicator(indicator);
     positionIndicator(indicator, [...days.children].indexOf(days.querySelector('.active')), true, 'var(--day-gap)');
+    const modeDrop = content.querySelector('.mode-drop');
+    bindIndicator(modeDrop);
+    positionIndicator(modeDrop, mode === 'Сессия' ? 1 : 0, true);
    }
   }
   content.inert = false;
@@ -151,6 +154,7 @@ async function render({keyboard = false, scrollTop = false} = {}) {
   if (focusHeading) {
    const title = content.querySelector('h1');
    if (title) { title.tabIndex = -1; title.focus({preventScroll:true}); }
+   else content.querySelector('.schedule-modes [aria-pressed=true]')?.focus({preventScroll:true});
   }
   lastShownPage = page;
   if (page === 'schedule') lastShownDate = selected;
@@ -201,11 +205,6 @@ function dayButtons(monday) {
  }).join('');
 }
 
-function scheduleSubtitle() {
- const group = user.grp || (user.role === 'teacher' ? 'Мои занятия' : user.role === 'student' ? 'Группа пока не назначена' : 'Расписание групп — в управлении');
- return fmt(selected,{weekday:'long',day:'numeric',month:'long'}) + ' · ' + group;
-}
-
 function weekRange(monday) {
  return fmt(monday) + ' — ' + fmt(shift(monday,6));
 }
@@ -231,7 +230,7 @@ function previewSchedule(content, keyboard) {
   else button.removeAttribute('aria-current');
   if (active) positionIndicator(strip.querySelector('.day-drop'), i, keyboard, 'var(--day-gap)');
  }
- content.querySelector('.schedule-cover .heading p').textContent = scheduleSubtitle();
+ positionIndicator(content.querySelector('.mode-drop'), mode === 'Сессия' ? 1 : 0, keyboard);
  for (const button of content.querySelectorAll('[data-mode]')) {
   const active = button.dataset.mode === mode;
   button.classList.toggle('active', active);
@@ -277,9 +276,13 @@ async function schedule() {
 
 function schedulePage({weekLabel, agenda, summary}) {
  const monday = weekStart(selected);
- return `<header class="schedule-cover">${campusDrawing()}${heading('Расписание',esc(scheduleSubtitle()))}</header>
-  <div class="schedule-layout"><section>
-   <div class="segmented">${['Пары','Сессия'].map(m=>`<button data-mode="${m}" class="${mode===m?'active':''}" aria-pressed="${mode===m}">${m}</button>`).join('')}</div>
+ const modes = ['Пары','Сессия'];
+ return `<div class="schedule-layout"><section aria-label="Расписание">
+   <div class="schedule-modes" role="group" aria-label="Вид расписания">
+    ${modes.map(m=>`<button data-mode="${m}" aria-pressed="${mode===m}">${m}</button>`).join('')}
+    <span class="mode-drop" aria-hidden="true"></span>
+    <span class="mode-labels" aria-hidden="true">${modes.map(m=>`<span>${m}</span>`).join('')}</span>
+   </div>
    <div class="weekbar"><div><strong>${esc(weekLabel)}</strong><small>${weekRange(monday)}</small></div><div class="week-actions"><button data-action="today">Сегодня</button><button data-shift="-7" aria-label="Предыдущая неделя">‹</button><button data-shift="7" aria-label="Следующая неделя">›</button></div></div>
    <div class="days">${dayButtons(monday)}<span class="day-drop" aria-hidden="true"></span></div>
    <label class="checkline"><input type="checkbox" id="showClubs" ${showClubs?'checked':''}>Показывать мои секции</label>
