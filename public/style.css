@@ -419,6 +419,39 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 }
 @keyframes portal-content-in { from { opacity: .84; transform: translateY(3px); } }
 .management-tabs { display: block; }
+/* The sidebar and the card padding both reduce the width available to an editor. */
+#management-section form:has(input:is([type=date], [type=time], [type=datetime-local])) {
+  container: management-form / inline-size;
+}
+#management-section .editor-grid:has(input:is([type=date], [type=time], [type=datetime-local])) {
+  grid-template-columns: minmax(0, 1fr);
+}
+#management-section .editor-grid > label { min-inline-size: 0; }
+#management-section input:is([type=date], [type=time], [type=datetime-local]) {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 44px;
+  text-align: start;
+}
+#management-section input::-webkit-date-and-time-value {
+  min-inline-size: 0;
+  margin-inline: 0;
+  text-align: start;
+}
+@media (max-width: 720px), (pointer: coarse) {
+  #management-section input:is([type=date], [type=time], [type=datetime-local]) {
+    font-size: max(16px, 1em);
+  }
+}
+@media (min-width: 721px) {
+  @container management-form (min-width: 34rem) {
+    #management-section .editor-grid:has(input:is([type=date], [type=time], [type=datetime-local])) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
 teacher-picker { display:block; min-width:0; margin:15px 0; }
 teacher-picker label { margin:0; }
 .teacher-input { position:relative; }
