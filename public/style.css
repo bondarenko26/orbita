@@ -690,7 +690,8 @@ h1, h2, h3, .service-copy strong, .day strong { font-weight:700; }
   .weekbar small { font-size:0.875rem; }
   .days { gap: 3px; }
   .day { padding: 7px 0 9px; border-radius: 12px; }
-  .lesson { grid-template-columns: 4rem minmax(0, 1fr); gap: 12px; padding: 16px; }
+  .lesson { grid-template-columns: minmax(4.75rem, max-content) minmax(0, 1fr); gap: 12px; padding: 16px; }
+  .lesson .lesson-time { padding-inline-end: calc(1rem + 3px); }
   .services-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 400px) {
