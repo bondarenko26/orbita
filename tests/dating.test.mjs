@@ -10,7 +10,7 @@ function fixture(t){
   const db=new DatabaseSync(':memory:');t.after(()=>db.close());
   db.exec(`PRAGMA foreign_keys=ON;CREATE TABLE users(id INTEGER PRIMARY KEY,role TEXT,active INTEGER DEFAULT 1,deleted_at TEXT);
     CREATE VIEW live_users AS SELECT * FROM users WHERE deleted_at IS NULL;
-    CREATE TABLE notices(id INTEGER PRIMARY KEY,user_id INTEGER,title TEXT,body TEXT);`);
+    CREATE TABLE notices(id INTEGER PRIMARY KEY,user_id INTEGER,title TEXT,body TEXT,destination TEXT);`);
   function user(id,role='student'){db.prepare('INSERT INTO users(id,role) VALUES(?,?)').run(id,role);return id}
   const service=installDating(db,(status,message)=>{throw Object.assign(Error(message),{status})});
   function request(id,action,body){

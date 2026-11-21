@@ -14,11 +14,11 @@ export function installSupport(db, {required, fail}) {
   const inbox = db.prepare(`SELECT ${fields},u.name AS author FROM support_tickets t
     JOIN users u ON u.id=t.author_id ORDER BY (t.reply IS NULL) DESC,t.id DESC`);
   const insert = db.prepare('INSERT INTO support_tickets(author_id,subject,message) VALUES(?,?,?)');
-  const notifyAdmins = db.prepare(`INSERT INTO notices(user_id,title,body)
-    SELECT id,?,? FROM live_users WHERE role='admin' AND active=1`);
+  const notifyAdmins = db.prepare(`INSERT INTO notices(user_id,title,body,destination)
+    SELECT id,?,?,? FROM live_users WHERE role='admin' AND active=1`);
   const answer = db.prepare(`UPDATE support_tickets SET reply=?,responder_id=?
     WHERE id=? AND reply IS NULL RETURNING author_id`);
-  const notifyAuthor = db.prepare('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)');
+  const notifyAuthor = db.prepare('INSERT INTO notices(user_id,title,body,destination) VALUES(?,?,?,?)');
   function atomic(fn) {
     db.exec('BEGIN IMMEDIATE');
     try { const result=fn(); db.exec('COMMIT'); return result; }
@@ -31,7 +31,7 @@ export function installSupport(db, {required, fail}) {
       const subject=required(body,'subject',120), message=required(body,'message',2000);
       const id=atomic(()=>{
         const ticket=Number(insert.run(user.id,subject,message).lastInsertRowid);
-        notifyAdmins.run('Новое обращение в поддержку №'+ticket,'Откройте «Профиль → Техподдержка → Входящие».');
+        notifyAdmins.run('Новое обращение в поддержку №'+ticket,'Откройте «Профиль → Техподдержка → Входящие».','support-inbox/'+ticket);
         return ticket;
       });
       send({id},201);
@@ -44,7 +44,7 @@ export function installSupport(db, {required, fail}) {
       atomic(()=>{
         const ticket=answer.get(reply,user.id,id);
         if (!ticket) fail(409,'Обращение уже закрыто или недоступно');
-        notifyAuthor.run(ticket.author_id,'Ответ техподдержки по обращению №'+id,'Ответ доступен в разделе «Профиль → Техподдержка».');
+        notifyAuthor.run(ticket.author_id,'Ответ техподдержки по обращению №'+id,'Ответ доступен в разделе «Профиль → Техподдержка».','support-mine/'+id);
       });
       send({ok:true});
     } else return false;

@@ -418,6 +418,25 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
   }
 }
 @keyframes portal-content-in { from { opacity: .84; transform: translateY(3px); } }
+.notice-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 12px;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.notice-card > :not(.notice-arrow) { grid-column: 1; }
+.notice-title { font-size: 1.125rem; }
+.notice-body { color: var(--muted); font-size: .875rem; line-height: 1.5; }
+.notice-arrow { grid-column: 2; grid-row: 1 / 4; color: var(--muted); font-size: 1.5rem; }
+.notice-card[aria-busy=true] { cursor: progress; }
+.notice-destination { scroll-margin-block-start: 12px; }
+.card.notice-destination { border-color: var(--accent); }
+@media (prefers-reduced-motion:no-preference) {
+  .notice-card { transition: transform 120ms var(--ease-out), border-color 150ms ease; }
+  .notice-card:active { transform: scale(.985); }
+}
 .management-tabs { display: block; }
 /* The sidebar and the card padding both reduce the width available to an editor. */
 #management-section form:has(input:is([type=date], [type=time], [type=datetime-local])) {

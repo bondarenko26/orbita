@@ -28,8 +28,8 @@ async function prepareImage(file){
   return output;
 }
 
-export function bindDating(root,{admin,api,esc,uiIcon,toast}){
-  let data,tab='feed',editing=false,showRules=false,busy=false;
+export function bindDating(root,{admin,initialTab='feed',api,esc,uiIcon,toast}){
+  let data,tab=initialTab,editing=false,showRules=false,busy=false;
   let upload=null,fileTask=null,fileError='',revision=0;
   const call=(action,body)=>api('dating/'+action,body);
   const button=(label,action,kind='',id='')=>`<button type="button" data-daction="${action}"${id?' data-did="'+esc(id)+'"':''} class="${kind}">${label}</button>`;

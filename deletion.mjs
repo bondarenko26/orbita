@@ -42,7 +42,7 @@ export function installDeletion(db,{fail,academic}){
    run(`UPDATE ${table} SET deleted_at=? WHERE id=?`,now,r.id);
    if(table==='lessons')academic.syncLessonAssignment(r.assignment_id);
    if(table==='users'){run('DELETE FROM sessions WHERE user_id=?',r.id);if(one("SELECT name FROM sqlite_master WHERE type='table' AND name='mail_jobs'"))run("UPDATE mail_jobs SET state='cancelled',payload=NULL WHERE user_id=? AND state IN ('pending','sending')",r.id)}
-   if(table==='grades'){run('INSERT INTO journal_history(actor,assignment_id,entity,record_id,old_json,new_json) VALUES(?,?,?,?,?,?)',u.id,r.assignment_id,'grades',r.id,JSON.stringify(r),JSON.stringify({...r,deleted_at:now}));run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',r.user_id,restore?'Оценка восстановлена':'Оценка удалена',r.subject)}
+   if(table==='grades'){run('INSERT INTO journal_history(actor,assignment_id,entity,record_id,old_json,new_json) VALUES(?,?,?,?,?,?)',u.id,r.assignment_id,'grades',r.id,JSON.stringify(r),JSON.stringify({...r,deleted_at:now}));run('INSERT INTO notices(user_id,title,body,destination) VALUES(?,?,?,?)',r.user_id,restore?'Оценка восстановлена':'Оценка удалена',r.subject,'grades')}
    run('INSERT INTO audit(actor,action,entity,record_id) VALUES(?,?,?,?)',u.id,action,table,r.id);db.exec('COMMIT');
   }catch(e){db.exec('ROLLBACK');throw e}send({ok:true});return true;
  }

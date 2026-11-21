@@ -3,6 +3,7 @@ import {installDeletion} from './deletion.mjs';
 import {purgeTrash} from './trash-retention.mjs';
 import {installTeacherReviews} from './teacher-reviews.mjs';
 import {installSupport} from './support.mjs';
+import {migrateNoticeLinks,resolveNoticeLink} from './notice-links.mjs';
 import {installDating} from './dating.mjs';
 import {startDatingWorker} from './dating-moderation.mjs';
 import {normalizeEmail,temporaryPassword} from './credentials.mjs';
@@ -59,6 +60,7 @@ const mail=installMail(db,{dir,fail,credentials,hashPassword:hash,scope:(u,rows)
 const management=installManagement(db,{hash,fail,required,allowed,date,time,mail});
 const deletion=installDeletion(db,{fail,academic:management.academic});
 const teacherReviews=installTeacherReviews(db,fail);
+migrateNoticeLinks(db);
 const support=installSupport(db,{required,fail});
 const dating=installDating(db,fail);
 const datingWorker=startDatingWorker(dating.queue);
@@ -117,14 +119,14 @@ async function handler(req,res){
  });return}
  if(p==='/api/requests'&&req.method==='POST'){
  roles(u,'student');const type=allowed(b.type,['Справка об обучении','Справка о стипендии','Заявление в деканат']);const comment=typeof b.comment==='string'?b.comment.slice(0,2000):'';
- db.exec('BEGIN IMMEDIATE');let id;try{const r=run('INSERT INTO requests(user_id,type,comment) VALUES(?,?,?)',u.id,type,comment);id=Number(r.lastInsertRowid);for(const staff of all("SELECT * FROM users WHERE active=1 AND role IN ('staff','admin')").filter(s=>management.academic.canStudent(s,u.id)))run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',staff.id,'Новая заявка №'+id,`${u.name}: ${type}. Откройте раздел «Входящие».`);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
+ db.exec('BEGIN IMMEDIATE');let id;try{const r=run('INSERT INTO requests(user_id,type,comment) VALUES(?,?,?)',u.id,type,comment);id=Number(r.lastInsertRowid);for(const staff of all("SELECT * FROM users WHERE active=1 AND role IN ('staff','admin')").filter(s=>management.academic.canStudent(s,u.id)))run('INSERT INTO notices(user_id,title,body,destination) VALUES(?,?,?,?)',staff.id,'Новая заявка №'+id,`${u.name}: ${type}. Откройте раздел «Входящие».`,'request-inbox/'+id);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
  send({id},201);return}
  if(/^\/api\/requests\/\d+$/.test(p)&&req.method==='GET'){const r=one('SELECT * FROM requests WHERE id=? AND user_id=?',Number(p.split('/').pop()),u.id);if(!r)fail(404,'Заявка не найдена');send(r);return}
  if(p==='/api/clubs'&&req.method==='GET'){send(all('SELECT c.*,m.status AS membership FROM clubs c LEFT JOIN memberships m ON m.club_id=c.id AND m.user_id=? WHERE c.archived=0',u.id));return}
  if(p==='/api/join'&&req.method==='POST'){
  roles(u,'student');const club=one('SELECT id,title,owner FROM clubs WHERE id=? AND archived=0 AND enrollment_open=1',Number(b.club_id));if(!club)fail(409,'Набор в секцию закрыт');
  db.exec('BEGIN IMMEDIATE');try{const result=run('INSERT INTO memberships(club_id,user_id) VALUES(?,?) ON CONFLICT(club_id,user_id) DO NOTHING',club.id,u.id);
- if(result.changes)for(const recipient of all("SELECT id FROM users WHERE active=1 AND (id=? OR role='admin')",club.owner))run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',recipient.id,'Новая запись в секцию «'+club.title+'»',`${u.name} подал(а) заявку. Откройте «Входящие» → «Запись в секции».`);
+ if(result.changes)for(const recipient of all("SELECT id FROM users WHERE active=1 AND (id=? OR role='admin')",club.owner))run('INSERT INTO notices(user_id,title,body,destination) VALUES(?,?,?,?)',recipient.id,'Новая запись в секцию «'+club.title+'»',`${u.name} подал(а) заявку. Откройте «Входящие» → «Запись в секции».`,'memberships');
  db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}send({ok:true});return}
  if(p==='/api/events'&&req.method==='GET'){send(all('SELECT * FROM events WHERE archived=0 ORDER BY date'));return}
  if(p==='/api/notices'&&req.method==='GET'){
@@ -135,6 +137,14 @@ async function handler(req,res){
    const unread=one(`SELECT 1 FROM notices n WHERE (${noticeAudience}) AND NOT EXISTS
      (SELECT 1 FROM reads r WHERE r.user_id=? AND r.notice_id=n.id) LIMIT 1`,...noticeParams(u),u.id);
    send({unread:!!unread});return;
+ }
+ if(/^\/api\/notices\/\d+\/open$/.test(p)&&req.method==='POST'){
+   const id=Number(p.split('/')[3]);
+   const notice=one(`SELECT n.destination FROM notices n WHERE n.id=? AND (${noticeAudience})`,id,...noticeParams(u));
+   if(!notice)fail(404,'Уведомление недоступно');
+   const destination=resolveNoticeLink(notice.destination,u,one,management.academic);
+   run('INSERT OR IGNORE INTO reads(user_id,notice_id) VALUES(?,?)',u.id,id);
+   send({destination,unavailable:!!notice.destination&&!destination});return;
  }
  if(p==='/api/notices/read'&&req.method==='POST'){
    run(`INSERT OR IGNORE INTO reads(user_id,notice_id) SELECT ?,n.id FROM notices n WHERE ${noticeAudience}`,u.id,...noticeParams(u));

@@ -187,7 +187,7 @@ export function installDating(db,fail){
       run('INSERT OR IGNORE INTO dating_daily VALUES(?,?,?)',u.id,day,other.owner);
       run('DELETE FROM dating_daily WHERE sender=? AND day<?',u.id,day);
       run('INSERT INTO dating_invites(sender,recipient,created) VALUES(?,?,?)',u.id,other.owner,Date.now());
-      run('INSERT INTO notices(user_id,title,body) VALUES(?,?,?)',other.owner,'Новое приглашение','Открой «Разное» → «Знакомства» → «Приглашения».');
+      run('INSERT INTO notices(user_id,title,body,destination) VALUES(?,?,?,?)',other.owner,'Новое приглашение','Открой «Разное» → «Знакомства» → «Приглашения».','dating');
     }else if(action==='dismiss'){
       run('UPDATE dating_invites SET dismissed=1 WHERE sender=? AND recipient=?',other.owner,u.id);
     }else if(action==='block'){

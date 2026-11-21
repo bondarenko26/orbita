@@ -103,7 +103,7 @@ function navButton([id,icon,label]) {
 }
 const heading=(title,sub,extra='')=>`<div class="heading"><div><h1>${title}</h1><p>${sub}</p></div>${extra}</div>`;
 const empty=(title,sub,action='')=>`<div class="empty"><div class="symbol">◌</div><h3>${title}</h3><p>${sub}</p>${action}</div>`;
-async function render({keyboard = false, scrollTop = false, managementTab = false} = {}) {
+async function render({keyboard = false, scrollTop = false, managementTab = false, noticeLink = null} = {}) {
  disposeBlocks?.();disposeBlocks=null;
  if(!user)return login();
  if(user.must_change_password)return forcePassword();
@@ -177,8 +177,15 @@ async function render({keyboard = false, scrollTop = false, managementTab = fals
    }
   }
   content.inert = false;
-  if (scrollTop) window.scrollTo({top:0, behavior:'instant'});
-  if (focusHeading) {
+  const record=noticeRecord(content,noticeLink);
+  if (record) {
+   if (record.tagName==='DETAILS') record.open=true;
+   record.classList.add('notice-destination');
+   const focus=record.querySelector('summary')||record;
+   if (keyboard) { if (!focus.matches('summary')) focus.tabIndex=-1; focus.focus({preventScroll:true}); }
+   record.scrollIntoView({block:'start',behavior:'instant'});
+  } else if (scrollTop) window.scrollTo({top:0, behavior:'instant'});
+  if (focusHeading && !record) {
    const title = content.querySelector('h1');
    if (title) { title.tabIndex = -1; title.focus({preventScroll:true}); }
    else content.querySelector('.mode-switch [aria-pressed=true]')?.focus({preventScroll:true});
@@ -204,7 +211,7 @@ async function render({keyboard = false, scrollTop = false, managementTab = fals
    });
   }
   if(page==='campus')bindCampusDirectory($('[data-campus-guide]'));
-  if(page==='dating'||page==='datingAdmin')bindDating($('[data-dating]'),{admin:page==='datingAdmin',api,esc,uiIcon,toast});
+  if(page==='dating'||page==='datingAdmin')bindDating($('[data-dating]'),{admin:page==='datingAdmin',initialTab:noticeLink==='dating'?'inbox':'feed',api,esc,uiIcon,toast});
  } catch (e) {
   if (v === version) {
    content.removeAttribute('data-arrival');
@@ -347,7 +354,7 @@ function supportPage(body){
 async function support(){
  const inbox=user.role==='admin' && supportTab===supportTabs[1];
  const tickets=await api(inbox?'support/inbox':'support');
- const cards=tickets.map(t=>`<article class="card support-ticket">
+ const cards=tickets.map(t=>`<article class="card support-ticket" data-ticket-id="${t.id}">
  <small>№ ${t.id} · ${fmt(t.created.slice(0,10))}</small> <span class="badge">${t.reply?'Есть ответ':'Ожидает ответа'}</span>
  <h3>${esc(t.subject)}</h3>${inbox?`<small>${esc(t.author)}</small>`:''}
  <p class="request-detail">${esc(t.message)}</p>
@@ -462,7 +469,7 @@ function contacts(){
  }).join('');
  return backToExtras()+heading('Контакты','Телефоны и электронная почта подразделений МГСУ')+'<div class="grid">'+cards+'</div>';
 }
-async function requests(){if(['staff','admin','manager'].includes(user.role))return backToExtras()+staffRequestsView(await api('inbox'),user);if(user.role!=='student')return backToExtras()+heading('Справки','Документы и заявления')+empty('Раздел для студентов','Студенческие справки заказываются из аккаунта студента.');const rs=await api('requests');return backToExtras()+heading('Справки','Деканат рядом. Без очередей и потерянных сообщений.')+`<button class="primary" data-action="request">＋ Новая заявка</button><div class="list manage-section">${rs.map(r=>`<article class="card"><div class="row"><span class="badge">${esc(r.status)}</span><small>№ ${r.id}</small></div><h3>${esc(r.type)}</h3><p>${esc(r.comment||'Без дополнительного комментария')}</p>${r.has_document?`<p><a class="download" href="/api/requests/${r.id}/document">Скачать справку ↓</a></p>`:''}${r.reply?`<p class="request-detail">Ответ деканата: ${esc(r.reply)}</p>`:''}<small>${esc(r.created)}</small><p>Принята → В работе → Готова</p></article>`).join('')||empty('Здесь будут твои заявки','Закажи справку или отправь обращение — статус появится здесь.')}</div>`}
+async function requests(){if(['staff','admin','manager'].includes(user.role))return backToExtras()+staffRequestsView(await api('inbox'),user);if(user.role!=='student')return backToExtras()+heading('Справки','Документы и заявления')+empty('Раздел для студентов','Студенческие справки заказываются из аккаунта студента.');const rs=await api('requests');return backToExtras()+heading('Справки','Деканат рядом. Без очередей и потерянных сообщений.')+`<button class="primary" data-action="request">＋ Новая заявка</button><div class="list manage-section">${rs.map(r=>`<article class="card" data-request-id="${r.id}"><div class="row"><span class="badge">${esc(r.status)}</span><small>№ ${r.id}</small></div><h3>${esc(r.type)}</h3><p>${esc(r.comment||'Без дополнительного комментария')}</p>${r.has_document?`<p><a class="download" href="/api/requests/${r.id}/document">Скачать справку ↓</a></p>`:''}${r.reply?`<p class="request-detail">Ответ деканата: ${esc(r.reply)}</p>`:''}<small>${esc(r.created)}</small><p>Принята → В работе → Готова</p></article>`).join('')||empty('Здесь будут твои заявки','Закажи справку или отправь обращение — статус появится здесь.')}</div>`}
 async function clubs(){
  const [cs,events]=await Promise.all([api('clubs'),api('events')]);
  const clubCard=c=>`<article class="card"><span class="badge">${esc(c.category)}</span><h3>${esc(c.title)}</h3><p>${esc(c.description)}</p><p>◷ ${weekdays[c.weekday]} · ${esc(c.start)}–${esc(c.end)}<br>⌖ ${esc(c.place)}</p>${c.membership?`<span class="badge">${esc(c.membership)}</span><div class="club-actions"><button data-leave="${c.id}">Отменить запись</button></div>`:user.role==='student'?`<div class="club-actions"><button data-join="${c.id}" ${!c.enrollment_open?'disabled':''}>${c.enrollment_open?'Записаться →':'Набор закрыт'}</button></div>`:''}</article>`;
@@ -520,7 +527,62 @@ function emailSettings() {
   '<p>Для смены логина обратись в деканат.</p>';
  return backToProfile()+'<h1>Логин и почта</h1><section class="card profile-detail"><h2>'+esc(user.login)+'</h2>'+forms+'</section>';
 }
-async function notices(){const viewer=user.id,seq=++noticeRevision;const ns=await api('notices');applyBell(ns.some(n=>!n.is_read),viewer,seq);return heading('Уведомления','Изменения и ответы, которые важно не пропустить')+`<button data-action="read">Отметить всё прочитанным</button><div class="list manage-section">${ns.map(n=>`<article class="card"><small>${n.is_read?'Прочитано':'● Новое'}</small><h3>${esc(n.title)}</h3><p>${esc(n.body)}</p></article>`).join('')||empty('Пока тихо','Новые уведомления появятся здесь.')}</div>`}
+async function notices() {
+ const viewer=user.id, seq=++noticeRevision;
+ const list=await api('notices');
+ applyBell(list.some(n=>!n.is_read),viewer,seq);
+ const cards=list.map(n=>`<button type="button" class="card notice-card" data-notice="${n.id}">
+   <small class="notice-state">${n.is_read?'Прочитано':'● Новое'}</small>
+   <strong class="notice-title">${esc(n.title)}</strong>
+   <span class="notice-body">${esc(n.body)}</span>
+   <span class="notice-arrow" aria-hidden="true">›</span>
+  </button>`).join('');
+ return heading('Уведомления','Изменения и ответы, которые важно не пропустить')+
+  '<button data-action="read">Отметить всё прочитанным</button><div class="list manage-section">'+
+  (cards||empty('Пока тихо','Новые уведомления появятся здесь.'))+'</div>';
+}
+
+let noticeClick=0;
+async function openNotice(button,keyboard) {
+ if (button.hasAttribute('aria-busy')) return;
+ const currentView=version, click=++noticeClick;
+ button.setAttribute('aria-busy','true');
+ try {
+  const {destination,unavailable}=await api('notices/'+button.dataset.notice+'/open',{});
+  if (currentView!==version || click!==noticeClick || !button.isConnected) return;
+  button.querySelector('.notice-state').textContent='Прочитано';
+  if (!destination) {
+   refreshBell();
+   if (unavailable) { toast('Связанная запись больше недоступна.'); return; }
+   const title=button.querySelector('.notice-title').textContent, body=button.querySelector('.notice-body').textContent;
+   $('#modal-content').innerHTML=`<h2>${esc(title)}</h2><p class="request-detail">${esc(body)}</p><div class="form-actions"><button data-action="close" autofocus>Закрыть</button></div>`;
+   $('#modal').showModal();
+   return;
+  }
+  const [kind,key]=destination.split('/');
+  if (kind==='request-inbox' || kind==='request-mine' || kind==='memberships') page='requests';
+  else if (kind==='support-inbox' || kind==='support-mine') {
+   page='support'; supportTab=supportTabs[kind==='support-inbox'?1:0];
+  } else if (kind==='grades') { page='grades'; gradeTab='Оценки'; }
+  else if (kind==='clubs') { page='clubs'; clubTab='Мои занятия'; }
+  else if (kind==='dating') page='dating';
+  else if (kind==='schedule' || kind==='session') {
+   page='schedule'; selected=key||today(); mode=kind==='session'?'Сессия':'Пары';
+  } else return;
+  await render({keyboard,scrollTop:true,noticeLink:destination});
+ } finally { button.removeAttribute('aria-busy'); }
+}
+
+function noticeRecord(content,link) {
+ if (!link) return null;
+ if (link==='memberships') return content.querySelector('[data-live-inbox="memberships"]')?.closest('section');
+ const [kind,id]=link.split('/');
+ if (!/^\d+$/.test(id)) return null;
+ if (kind==='request-inbox') return content.querySelector(`[data-live-inbox="requests"] [data-inbox-id="${id}"]`);
+ if (kind==='request-mine') return content.querySelector(`[data-request-id="${id}"]`);
+ if (kind==='support-mine'||kind==='support-inbox') return content.querySelector(`[data-ticket-id="${id}"]`);
+ return null;
+}
 const field=(name,label,type='text',value='')=>`<label>${label}<input name="${name}" type="${type}" value="${esc(value)}" required></label>`;
 const select=(name,label,options)=>`<label>${label}<select name="${name}">${options.map(o=>{let [v,n]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}">${esc(n)}</option>`}).join('')}</select></label>`;
 const form=(title,endpoint,fields)=>`<details class="card"><summary>${title}</summary><form data-endpoint="${endpoint}">${fields}<button class="primary">Сохранить</button></form></details>`;
@@ -533,7 +595,7 @@ function manage(){return api('manage')}
 function modal(title,fields,onSubmit,actionLabel='Сохранить'){$('#modal-content').innerHTML=`<h2>${title}</h2><form id="modal-form">${fields}<p class="error" role="alert"></p><div class="form-actions"><button type="button" data-action="close">Отмена</button><button class="primary">${esc(actionLabel)}</button></div></form>`;$('#modal').showModal();$('#modal-form').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('.primary');b.disabled=true;try{const result=await onSubmit(Object.fromEntries(new FormData(e.target)));$('#modal').close();toast(result?.mail_queued?'Временный пароль поставлен в очередь отправки':actionLabel==='Удалить'?'Запись удалена':'Сохранено');await render()}catch(e){$('#modal-form .error').textContent=e.message}finally{b.disabled=false}}}
 document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
  const keyboard=e.detail===0;
- try{if(b.dataset.supportReply){replyDialog(b.dataset.supportReply)}else if(b.dataset.action==='support-new'){supportDialog()}else if(b.dataset.teacher){teacherOrigin=page==='schedule'?'schedule':'teachers';teacherId=Number(b.dataset.teacher);page='teacherCard';await render({keyboard,scrollTop:true})}else if(b.dataset.reviewAction){reviewDialog(b)}else if(b.dataset.changeEmail){modal('Сменить email-логин','<label>Новый email<input type="email" name="email" required></label><label>Ваш текущий пароль сотрудника<input type="password" name="current_password" autocomplete="current-password" required></label><p>Старые сеансы владельца завершатся. На новый email будет отправлен новый временный пароль.</p>',v=>api('accounts/email',{...v,id:Number(b.dataset.changeEmail)}))}else if(b.dataset.recordDelete){modal('Удалить запись?','<p>Запись исчезнет из кабинета. Её можно восстановить в течение 30 дней в разделе «Удалённые».</p>',()=>api('records/'+b.dataset.recordDelete+'/delete',{id:Number(b.dataset.recordId)}),'Удалить')}else if(b.dataset.recordRestore){await api('records/'+b.dataset.recordRestore+'/restore',{id:Number(b.dataset.recordId)});await render()}else if(b.dataset.resetPassword){b.disabled=true;try{const result=await api('accounts/reset',{id:Number(b.dataset.resetPassword)});toast('Временный пароль поставлен в очередь отправки на email')}finally{b.disabled=false}}
+ try{if(b.dataset.notice){await openNotice(b,keyboard)}else if(b.dataset.supportReply){replyDialog(b.dataset.supportReply)}else if(b.dataset.action==='support-new'){supportDialog()}else if(b.dataset.teacher){teacherOrigin=page==='schedule'?'schedule':'teachers';teacherId=Number(b.dataset.teacher);page='teacherCard';await render({keyboard,scrollTop:true})}else if(b.dataset.reviewAction){reviewDialog(b)}else if(b.dataset.changeEmail){modal('Сменить email-логин','<label>Новый email<input type="email" name="email" required></label><label>Ваш текущий пароль сотрудника<input type="password" name="current_password" autocomplete="current-password" required></label><p>Старые сеансы владельца завершатся. На новый email будет отправлен новый временный пароль.</p>',v=>api('accounts/email',{...v,id:Number(b.dataset.changeEmail)}))}else if(b.dataset.recordDelete){modal('Удалить запись?','<p>Запись исчезнет из кабинета. Её можно восстановить в течение 30 дней в разделе «Удалённые».</p>',()=>api('records/'+b.dataset.recordDelete+'/delete',{id:Number(b.dataset.recordId)}),'Удалить')}else if(b.dataset.recordRestore){await api('records/'+b.dataset.recordRestore+'/restore',{id:Number(b.dataset.recordId)});await render()}else if(b.dataset.resetPassword){b.disabled=true;try{const result=await api('accounts/reset',{id:Number(b.dataset.resetPassword)});toast('Временный пароль поставлен в очередь отправки на email')}finally{b.disabled=false}}
  else if(b.dataset.supporttab){if(user.role==='admin' && supportTab!==b.dataset.supporttab){supportTab=b.dataset.supporttab;await render({keyboard})}}
  else if(b.dataset.page){page=b.dataset.page;if(page==='support')supportTab=supportTabs[0];if(b.dataset.section)clubTab=b.dataset.section;await render({keyboard,scrollTop:true})}
  else if(b.dataset.gradeTab){gradeTab=b.dataset.gradeTab;await render({keyboard})}
