@@ -116,16 +116,17 @@ async function render({keyboard = false, scrollTop = false, managementTab = fals
  const timetable = !pageChanged && page === 'schedule' && content.querySelector('.schedule-layout');
  const clubPanel = !pageChanged && page === 'clubs' && content.querySelector('.club-panel');
  const supportPanel = !pageChanged && page === 'support' && content.querySelector('.support-panel');
+ const gradePanel = !pageChanged && page === 'grades' && content.querySelector('.grade-panel');
  const editorPanel = managementTab && !pageChanged && page === 'manage' && content.querySelector('#management-section');
  const fromContent = keyboard && document.activeElement && content.contains(document.activeElement);
  content.setAttribute('aria-busy', 'true');
  content.inert = pageChanged;
  if (timetable) previewSchedule(content, keyboard);
  if (editorPanel) editorPanel.inert = true;
- const modePanel = clubPanel || supportPanel;
+ const modePanel = clubPanel || supportPanel || gradePanel;
  if (modePanel) {
   const picker=content.querySelector('.mode-switch');
-  if(picker)selectMode(picker, supportPanel ? supportTab : clubTab, keyboard);
+  if(picker)selectMode(picker, selectedMode(picker), keyboard);
   modePanel.inert = true;
  }
  status.textContent = '';
@@ -133,7 +134,7 @@ async function render({keyboard = false, scrollTop = false, managementTab = fals
   if (v === version && lastShownPage) status.textContent = 'Загружаем…';
  }, 240);
  try {
-  const view=({blocks:()=>'<div class="blocks-root" data-blocks></div>',schedule,grades,extras,dating,datingAdmin:dating,contacts,campus,support,teachers,teacherCard,requests,clubs,profile,personal,appearance,emailSettings,passwordSettings,notices,manage,teaching,trash,mailStatus})[page]||schedule;
+  const view=({blocks:()=>'<div class="blocks-root" data-blocks></div>',schedule,grades:['teacher','staff','admin'].includes(user.role)?teaching:grades,extras,dating,datingAdmin:dating,contacts,campus,support,teachers,teacherCard,requests,clubs,profile,personal,appearance,emailSettings,passwordSettings,notices,manage,teaching,trash,mailStatus})[page]||schedule;
   let result = await view();
   if (v !== version) return;
   if (view === manage) result = backToProfile() + managementView(result,user,api);
@@ -144,6 +145,7 @@ async function render({keyboard = false, scrollTop = false, managementTab = fals
   content.removeAttribute('data-arrival');
   if (!keyboard && lastShownPage) {
    if (pageChanged && page !== 'blocks') content.setAttribute('data-arrival', 'page');
+   else if (gradePanel) content.setAttribute('data-arrival', 'grade-tab');
    else if (dateChanged) content.setAttribute('data-arrival', selected > lastShownDate ? 'later' : 'earlier');
   }
   if (timetable) {
@@ -163,7 +165,7 @@ async function render({keyboard = false, scrollTop = false, managementTab = fals
     editorPanel.replaceWith(next);
    } else content.replaceChildren(template.content);
   } else {
-   content.innerHTML = view === schedule ? schedulePage(result) : view === clubs ? clubsPage(result) : view === support ? supportPage(result) : result;
+   content.innerHTML = view === schedule ? schedulePage(result) : view === clubs ? clubsPage(result) : view === support ? supportPage(result) : view === grades ? gradesPage(result) : result;
    const days = content.querySelector('.days');
    if (days) {
     const indicator = days.querySelector('.day-drop');
@@ -173,7 +175,7 @@ async function render({keyboard = false, scrollTop = false, managementTab = fals
    const picker = content.querySelector('.mode-switch');
    if (picker) {
     bindIndicator(picker.querySelector('.mode-drop'));
-    selectMode(picker, view === clubs ? clubTab : view === support ? supportTab : mode, true);
+    selectMode(picker, selectedMode(picker), true);
    }
   }
   content.inert = false;
@@ -215,7 +217,7 @@ async function render({keyboard = false, scrollTop = false, managementTab = fals
  } catch (e) {
   if (v === version) {
    content.removeAttribute('data-arrival');
-   const errorPanel = supportPanel || content;
+   const errorPanel = gradePanel || supportPanel || content;
    errorPanel.inert = false;
    errorPanel.innerHTML = empty('Не удалось загрузить',esc(e.message),'<button data-action="refresh">Повторить</button>');
    if (scrollTop) window.scrollTo({top:0, behavior:'instant'});
@@ -313,9 +315,13 @@ function modeSwitch(label, key, choices, selectedChoice) {
    </div>`;
 }
 
+function selectedMode(picker) {
+ return ({'grade-tab':gradeTab, supporttab:supportTab, clubtab:clubTab, mode})[picker.dataset.switch];
+}
+
 function selectMode(picker, choice, instant) {
  for (const [i,button] of picker.querySelectorAll('button').entries()) {
-  const active = button.dataset[picker.dataset.switch] === choice;
+  const active = button.getAttribute('data-'+picker.dataset.switch) === choice;
   button.setAttribute('aria-pressed', String(active));
   if (active) positionIndicator(picker.querySelector('.mode-drop'), i, instant);
  }
@@ -333,17 +339,21 @@ function schedulePage({weekLabel, agenda, summary}) {
   </div>`;
 }
 const mins=t=>Number(t.split(':')[0])*60+Number(t.split(':')[1]);
+function gradesPage(body) {
+ return heading('Оценки','Результаты по дисциплинам и посещаемость')+
+  modeSwitch('Результаты учёбы','grade-tab',['Оценки','Посещаемость'],gradeTab)+
+  '<section class="grade-panel">'+body+'</section>';
+}
 async function grades(){
- if(['teacher','staff','admin'].includes(user.role))return teaching();
- const [g,attendance]=await Promise.all([api('grades'),api('attendance')]);
- const tabs=`<nav class="section-tabs" aria-label="Результаты учёбы">${['Оценки','Посещаемость'].map(t=>`<button data-grade-tab="${t}" aria-pressed="${gradeTab===t}" class="${gradeTab===t?'active':''}">${t}</button>`).join('')}</nav>`;
  let body;if(gradeTab==='Оценки'){
+  const g=await api('grades');
   const numeric=g.filter(x=>['2','3','4','5'].includes(x.score)),avg=numeric.length?(numeric.reduce((sum,x)=>sum+Number(x.score),0)/numeric.length).toFixed(2):'—';
   body=`<div class="card row"><div><span class="eyebrow">Средний балл</span><p>По выставленным оценкам</p></div><strong class="score">${avg}</strong></div><div class="list manage-section">${g.map(x=>`<article class="card row"><div><h3>${esc(x.subject)}</h3><p>${esc(x.assessment)} · ${fmt(x.date)}</p></div><strong class="score">${esc(x.score)}</strong></article>`).join('')||empty('Оценок пока нет','Здесь появятся результаты по дисциплинам.')}</div>`;
  }else{
+  const attendance=await api('attendance');
   const marked=attendance.filter(a=>a.status!=='Не отмечено');
   body=`<div class="card"><h2>Посещаемость</h2><p>Всего отметок: ${marked.length} · Пропусков: ${marked.filter(a=>a.status==='Отсутствовал').length}</p><small>Отсутствие отметки не считается пропуском.</small></div><div class="list manage-section">${attendance.map(a=>`<article class="card"><h3>${esc(a.subject)}</h3><p>${fmt(a.date)} · ${esc(a.status)}</p></article>`).join('')||empty('Отметок пока нет','Посещаемость появится после заполнения журнала преподавателем.')}</div>`;
- }return heading('Оценки','Результаты по дисциплинам и посещаемость')+tabs+body;
+ }return body;
 }
 const backToExtras=()=>'<button class="back-link" data-page="extras">← Разное</button>';
 
@@ -598,7 +608,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
  try{if(b.dataset.notice){await openNotice(b,keyboard)}else if(b.dataset.supportReply){replyDialog(b.dataset.supportReply)}else if(b.dataset.action==='support-new'){supportDialog()}else if(b.dataset.teacher){teacherOrigin=page==='schedule'?'schedule':'teachers';teacherId=Number(b.dataset.teacher);page='teacherCard';await render({keyboard,scrollTop:true})}else if(b.dataset.reviewAction){reviewDialog(b)}else if(b.dataset.changeEmail){modal('Сменить email-логин','<label>Новый email<input type="email" name="email" required></label><label>Ваш текущий пароль сотрудника<input type="password" name="current_password" autocomplete="current-password" required></label><p>Старые сеансы владельца завершатся. На новый email будет отправлен новый временный пароль.</p>',v=>api('accounts/email',{...v,id:Number(b.dataset.changeEmail)}))}else if(b.dataset.recordDelete){modal('Удалить запись?','<p>Запись исчезнет из кабинета. Её можно восстановить в течение 30 дней в разделе «Удалённые».</p>',()=>api('records/'+b.dataset.recordDelete+'/delete',{id:Number(b.dataset.recordId)}),'Удалить')}else if(b.dataset.recordRestore){await api('records/'+b.dataset.recordRestore+'/restore',{id:Number(b.dataset.recordId)});await render()}else if(b.dataset.resetPassword){b.disabled=true;try{const result=await api('accounts/reset',{id:Number(b.dataset.resetPassword)});toast('Временный пароль поставлен в очередь отправки на email')}finally{b.disabled=false}}
  else if(b.dataset.supporttab){if(user.role==='admin' && supportTab!==b.dataset.supporttab){supportTab=b.dataset.supporttab;await render({keyboard})}}
  else if(b.dataset.page){page=b.dataset.page;if(page==='support')supportTab=supportTabs[0];if(b.dataset.section)clubTab=b.dataset.section;await render({keyboard,scrollTop:true})}
- else if(b.dataset.gradeTab){gradeTab=b.dataset.gradeTab;await render({keyboard})}
+ else if(b.dataset.gradeTab){if(gradeTab!==b.dataset.gradeTab){gradeTab=b.dataset.gradeTab;await render({keyboard})}}
  else if(b.dataset.date){selected=b.dataset.date;await render({keyboard})}
  else if(b.dataset.shift){selected=shift(selected,Number(b.dataset.shift));await render({keyboard})}
  else if(b.dataset.mode){mode=b.dataset.mode;await render({keyboard})}

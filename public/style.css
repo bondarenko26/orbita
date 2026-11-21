@@ -411,6 +411,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
   .week-actions button:active, .primary:active, .section-tabs button:active { transform: scale(.96); }
   .service-card:active { transform: scale(.985); }
   #content[data-arrival=page] > * { animation: portal-content-in 150ms var(--ease-out); }
+  #content[data-arrival=grade-tab] .grade-panel > * { animation: grade-results-in 150ms var(--ease-out); }
   #content[data-arrival=later] .agenda-list { --agenda-offset: 4px; }
   #content[data-arrival=earlier] .agenda-list { --agenda-offset: -4px; }
   #content:is([data-arrival=later],[data-arrival=earlier]) .agenda-list {
@@ -418,6 +419,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
   }
 }
 @keyframes portal-content-in { from { opacity: .84; transform: translateY(3px); } }
+@keyframes grade-results-in { from { opacity: .6; } }
 .notice-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
