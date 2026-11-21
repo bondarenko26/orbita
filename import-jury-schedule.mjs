@@ -4,6 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {groups, slots} from './reference/jury-autumn-2026.mjs';
 
 const marker = 'jury-autumn-2026-v1';
+const teacherNamesMarker = 'jury-autumn-2026-teacher-names-v2';
 const anchor = '2026-08-31';
 const lastClassDay = '2026-12-27';
 const filename = process.argv[2];
@@ -16,6 +17,24 @@ const one = (sql, ...params) => db.prepare(sql).get(...params);
 const id = result => Number(result.lastInsertRowid);
 const weekDate = (week, weekday) => new Date(Date.parse(anchor) +
   ((week - 1) * 7 + weekday - 1) * 86400000).toISOString().slice(0,10);
+const instituteId = group => group.program_id.split('__')[0];
+const teacherLogin = (institute, key) => `jury-2026-${institute}-${key.toLowerCase()}@example.invalid`;
+
+function updateTeacherNames() {
+  let count = 0;
+  for (const group of groups) {
+    const institute = instituteId(group);
+    for (const [key, name] of Object.entries(group.teachers)) {
+      const teacher = one("SELECT id FROM users WHERE login=? AND role='teacher' AND institute_id=?",
+        teacherLogin(institute,key),institute);
+      if (!teacher) continue;
+      count += run('UPDATE users SET name=? WHERE id=? AND name IS NOT ?',name,teacher.id,name).changes;
+      run(`UPDATE lessons SET teacher=? WHERE teacher IS NOT ? AND assignment_id IN
+        (SELECT id FROM teaching_assignments WHERE teacher_id=?)`, name,name,teacher.id);
+    }
+  }
+  return count;
+}
 
 function semester() {
   const settings = one('SELECT * FROM settings WHERE id=1');
@@ -33,7 +52,7 @@ function semester() {
 }
 
 function importGroup(group, term) {
-  const institute = one('SELECT id,name FROM academic_nodes WHERE id=?',group.program_id.split('__')[0]);
+  const institute = one('SELECT id,name FROM academic_nodes WHERE id=?',instituteId(group));
   const program = one("SELECT name FROM academic_nodes WHERE id=? AND kind='program'",group.program_id);
   if (!program || !institute) throw Error('Обновите справочник программ МГСУ.');
   const groupId = id(run(`INSERT INTO groups(name,faculty,program,course,institute_id,program_id,admission_year)
@@ -41,7 +60,7 @@ function importGroup(group, term) {
     group.program_id,2027-group.course));
   const teacherIds = new Map();
   for (const [key, name] of Object.entries(group.teachers)) {
-    const login = `jury-2026-${institute.id}-${key.toLowerCase()}@example.invalid`;
+    const login = teacherLogin(institute.id,key);
     const salt = randomBytes(16).toString('hex');
     const hash = salt + ':' + scryptSync(randomBytes(32),salt,64).toString('hex');
     teacherIds.set(key,id(run(`INSERT INTO users(login,email,password,name,role,institute_id)
@@ -83,8 +102,11 @@ function importGroup(group, term) {
 try {
   db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; BEGIN IMMEDIATE');
   if (one('SELECT id FROM academic_imports WHERE id=?',marker)) {
+    const needsTeacherNames = !one('SELECT id FROM academic_imports WHERE id=?',teacherNamesMarker);
+    const updated = needsTeacherNames ? updateTeacherNames() : 0;
+    if (needsTeacherNames) run('INSERT INTO academic_imports(id) VALUES(?)',teacherNamesMarker);
     db.exec('COMMIT');
-    console.log('Расписание для жюри уже загружено.');
+    console.log(needsTeacherNames ? 'Обновлены имена преподавателей: '+updated : 'Расписание для жюри уже загружено.');
   } else {
     for (const group of groups) {
       if (one('SELECT id FROM groups WHERE name=?',group.name)) {
@@ -94,6 +116,7 @@ try {
     const term = semester();
     const counts = groups.map(group => importGroup(group,term));
     run('INSERT INTO academic_imports(id) VALUES(?)',marker);
+    run('INSERT INTO academic_imports(id) VALUES(?)',teacherNamesMarker);
     db.exec('COMMIT');
     console.log('Загружены записи расписания: '+counts.join(', '));
   }

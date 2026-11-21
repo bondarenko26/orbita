@@ -52,6 +52,20 @@ test('jury schedule uses the application calendar, week exceptions and subgroups
     assert.equal(at('2026-11-23','1-40','11:30','1').kind,'Лабораторная');
     assert.equal(at('2026-11-23','1-40','11:30','2'),undefined);
     assert.equal(at('2026-11-26','2-52','11:30').room,'629 КМК');
+    const math = at('2026-11-20','1-40','14:30');
+    assert.equal(math.teacher_name,'Иван Иванович Математикович');
+    assert.equal(at('2026-11-25','1-40','08:30').teacher_name,'Марья Марьевна Экологиевична');
+    // Recreate the state of a database imported before the naming update.
+    db.prepare('DELETE FROM academic_imports WHERE id=?').run('jury-autumn-2026-teacher-names-v2');
+    db.prepare('UPDATE users SET name=? WHERE id=?').run('Прежнее имя',math.teacher_id);
+    db.prepare('UPDATE lessons SET teacher=? WHERE assignment_id=?').run('Прежнее имя',math.assignment_id);
+    assert.match(load(),/преподавателей: 1/);
+    const renamed = at('2026-11-20','1-40','14:30');
+    assert.equal(renamed.teacher_name,math.teacher_name);
+    assert.equal(renamed.teacher,math.teacher_name);
+    assert.equal(renamed.teacher_id,math.teacher_id);
+    assert.equal(renamed.assignment_id,math.assignment_id);
+    assert.match(load(),/уже загружено/);
     for (const group of ['1-40','2-52']) {
       assert.deepEqual(day('2026-11-28',group),[]);
       for (const lesson of day('2026-11-24',group)) {
